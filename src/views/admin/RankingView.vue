@@ -44,7 +44,8 @@ const elegir = (id) => { categoriaId.value = id; recienPublicada.value = false; 
 const abrirCerrar = () => accion(() => trk.post(`/categorias/${categoriaId.value}/${categoria.value.abierta ? 'cerrar' : 'abrir'}`))
 const guardarPuestos = () => accion(() => trk.patch(`/categorias/${categoriaId.value}`, { puestos_premiados: Number(puestos.value) }), 'Puestos premiados actualizados')
 const publicar = () => {
-  if (!window.confirm('¿Publicar el ranking de esta categoría? Se verá en la pantalla pública y para el comentarista.')) return
+  const advertencia = ranking.value.empates_sin_resolver.length ? ' Hay empates sin resolver.' : ''
+  if (!window.confirm(`¿Publicar el ranking de esta categoría? Se verá en la pantalla pública y para el comentarista.${advertencia}`)) return
   return accion(async () => { await trk.post(`/categorias/${categoriaId.value}/publicar`); recienPublicada.value = true }, 'Ranking publicado')
 }
 const mostrarEnPantalla = () => accion(() => trk.put('/evento/pantalla', { modo: 'RANKING', categoria_id: categoriaId.value }), 'La pantalla muestra este ranking')
@@ -100,7 +101,7 @@ onMounted(async () => {
           <input v-model="puestos" data-test="puestos" type="number" min="1" max="20" class="campo w-20" />
         </label>
         <button class="btn-claro" data-test="guardar-puestos" @click="guardarPuestos">Guardar</button>
-        <button class="btn-primario" data-test="publicar" :disabled="ranking.empates_sin_resolver.length > 0" @click="publicar">Publicar</button>
+        <button class="btn-primario" data-test="publicar" @click="publicar">Publicar</button>
         <button class="btn-secundario" data-test="mostrar-pantalla" :disabled="!categoria.ranking_publicado && !recienPublicada" @click="mostrarEnPantalla">Mostrar en pantalla</button>
       </div>
 
