@@ -92,7 +92,7 @@ const entrarComoAdmin = () => entrar(() => auth.loginAdmin(email.value, password
 
     <form v-else class="flex flex-col gap-4" data-test="entrar-admin" @submit.prevent="entrarComoAdmin">
       <label class="flex flex-col gap-1"><span class="font-semibold">Correo de Mantix</span>
-        <input v-model="email" class="campo" type="email" autocomplete="username" required />
+        <input v-model="email" class="campo" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required />
       </label>
       <label class="flex flex-col gap-1"><span class="font-semibold">Contraseña</span>
         <input v-model="password" class="campo" type="password" autocomplete="current-password" required />
