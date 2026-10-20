@@ -329,7 +329,7 @@ El ranking (R3–R6) lo calcula un **servicio JS puro** (`rankingService.calcula
 | 401 | `NO_AUTENTICADO` | Sin token, token inválido o `token_version` vieja |
 | 403 | `SIN_PERMISO` | `requirePermiso('trk', …)` falla |
 | 404 | `NO_ENCONTRADO` | — |
-| 409 | `CALIFICACION_BLOQUEADA`, `CATEGORIA_CERRADA`, `FUSION_CON_CHOQUE`, `CONFIRMACION_REQUERIDA`, `PREVIEW_VENCIDO` | Reglas de estado |
+| 409 | `CALIFICACION_BLOQUEADA`, `CATEGORIA_CERRADA`, `FUSION_CON_CHOQUE`, `CONFIRMACION_REQUERIDA`, `PREVIEW_VENCIDO`, `DUPLICADO`, `ESTADO_INVALIDO`, `CATEGORIAS_DISTINTAS`, `EMPATE_SIN_RESOLVER`, `RANKING_NO_PUBLICADO`, `NO_BLOQUEADA` | Reglas de estado |
 | 422 | `PUNTAJE_FUERA_DE_RANGO`, `CRITERIO_FALTANTE` | R1, HU-8 CA4 |
 | 429 | `DEMASIADOS_INTENTOS` | Limitador del login con PIN |
 
@@ -369,6 +369,7 @@ Prefijo `/api/trk/v1`. Permiso = clave en `roles.permisos.trk` (`requirePermiso`
 | TRK-CAT-002 | POST | `/categorias/:id/cerrar` | `administrar` | Cierra la categoría |
 | TRK-CAT-003 | POST | `/categorias/:id/publicar` | `publicar` | Publica ranking (snapshot) |
 | TRK-CAT-004 | PATCH | `/categorias/:id` | `administrar` | `puestos_premiados` |
+| TRK-CAT-005 | GET | `/categorias` | cualquier sesión TRK | Lista categorías (estado, rúbrica, puestos premiados) para selectores |
 | TRK-RNK-001 | GET | `/ranking/:categoriaId` | `administrar` (en vivo) / público (snapshot publicado) | Ranking |
 | TRK-RNK-002 | PUT | `/ranking/:categoriaId/desempate` | `administrar` | Fija `desempate_manual` de los empatados |
 | TRK-EXP-001 | GET | `/export/resultados.xlsx` | `exportar` | Exportación con detalle por jurado y criterio |
