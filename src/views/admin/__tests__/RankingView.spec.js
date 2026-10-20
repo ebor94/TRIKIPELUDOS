@@ -7,6 +7,7 @@ vi.mock('@/composables/useTiempoReal', () => ({ useTiempoReal: vi.fn(() => ({ co
 vi.mock('@/utils/descargas', () => ({ descargarBlob: vi.fn() }))
 
 import { trk } from '@/services/api'
+import { useTiempoReal } from '@/composables/useTiempoReal'
 import { descargarBlob } from '@/utils/descargas'
 import RankingView from '@/views/admin/RankingView.vue'
 
@@ -83,4 +84,82 @@ test('puestos premiados y desbloqueo de una calificación', async () => {
   await w.get('[data-test="desbloquear-9"]').trigger('click')
   await flushPromises()
   expect(trk.post).toHaveBeenCalledWith('/calificaciones/9/desbloquear')
+})
+
+const ultimoTiempoReal = () => useTiempoReal.mock.calls.at(-1)[0]
+
+test('un refresco en segundo plano conserva el desempate editado (mismo conjunto de participantes)', async () => {
+  trk.put.mockResolvedValue({ data: {} })
+  const w = mount(RankingView)
+  await flushPromises()
+  await w.get('[data-test="bajar-empate-a"]').trigger('click')
+  await ultimoTiempoReal().sincronizar()
+  await flushPromises()
+  await ultimoTiempoReal().eventos['calificacion:recibida']()
+  await flushPromises()
+  await w.get('[data-test="guardar-desempate"]').trigger('click')
+  await flushPromises()
+  expect(trk.put).toHaveBeenCalledWith('/ranking/1/desempate', { orden: ['b', 'a'] })
+})
+
+test('un refresco reemplaza el grupo cuyos participantes cambiaron y descarta los que desaparecieron', async () => {
+  trk.put.mockResolvedValue({ data: {} })
+  const w = mount(RankingView)
+  await flushPromises()
+  await w.get('[data-test="bajar-empate-a"]').trigger('click')
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: CATS }
+    if (url === '/ranking/1') return { data: { ...RANKING, empates_sin_resolver: [['a', 'c']] } }
+    throw new Error(url)
+  })
+  await ultimoTiempoReal().sincronizar()
+  await flushPromises()
+  await w.get('[data-test="guardar-desempate"]').trigger('click')
+  await flushPromises()
+  expect(trk.put).toHaveBeenCalledWith('/ranking/1/desempate', { orden: ['a', 'c'] })
+  expect(w.findAll('[data-test="guardar-desempate"]')).toHaveLength(1)
+})
+
+test('un refresco en segundo plano no pisa los puestos premiados que el admin está editando', async () => {
+  const w = mount(RankingView)
+  await flushPromises()
+  await w.get('[data-test="puestos"]').setValue('5')
+  await ultimoTiempoReal().sincronizar()
+  await flushPromises()
+  expect(w.get('[data-test="puestos"]').element.value).toBe('5')
+})
+
+test('una categoría sin resolver en el servidor no rompe el render aunque el id no exista en las filas', async () => {
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: CATS }
+    if (url === '/ranking/1') return { data: { ...RANKING, empates_sin_resolver: [['a', 'zzz']] } }
+    throw new Error(url)
+  })
+  const w = mount(RankingView)
+  await flushPromises()
+  expect(w.get('[data-test="empates"]').exists()).toBe(true)
+  expect(w.findAll('[data-test="fila-empate"]')).toHaveLength(2)
+})
+
+test('una respuesta de una categoría anterior llegada tarde no reemplaza a la categoría actual', async () => {
+  const CAT2 = { id: 2, codigo: 'GRA', nombre: 'Grandes', abierta: true, ranking_publicado: false, puestos_premiados: 7 }
+  const RANKING2 = { ...RANKING, categoria: CAT2, empates_sin_resolver: [], filas: [
+    { participante_id: 'z', mascota_nombre: 'Zeta', puesto: 1, puntaje_final: 99, promedios: {}, n_calificaciones: 3, n_jurados: 3, completa: true, premiado: true, empate_sin_resolver: false, participante: { id: 'z', mascota_nombre: 'Zeta' }, calificaciones: [] }
+  ] }
+  let respondePrimera
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: [CATS[0], CAT2] }
+    if (url === '/ranking/1') return new Promise((r) => { respondePrimera = () => r({ data: RANKING }) })
+    if (url === '/ranking/2') return { data: RANKING2 }
+    throw new Error(url)
+  })
+  const w = mount(RankingView)
+  await flushPromises()
+  await w.findAll('nav button').find((b) => b.text() === 'Grandes').trigger('click')
+  await flushPromises()
+  respondePrimera()
+  await flushPromises()
+  expect(w.text()).toContain('Zeta')
+  expect(w.text()).not.toContain('Incompleta (2/3)')
+  expect(w.get('[data-test="puestos"]').element.value).toBe('7')
 })

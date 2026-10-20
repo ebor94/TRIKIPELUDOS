@@ -19,15 +19,30 @@ const aviso = ref('')
 const recienPublicada = ref(false)
 
 const categoria = computed(() => (ranking.value ? ranking.value.categoria : null))
-const filaPorId = (id) => ranking.value.filas.find((f) => f.participante_id === id)
+const filaPorId = (id) => ranking.value?.filas.find((f) => f.participante_id === id)
+// Los puestos premiados solo vienen del servidor en la carga inicial y al cambiar de categoría; un refresco en segundo plano no los pisa.
+let tomarPuestos = true
+const mismoConjunto = (a, b) => a.length === b.length && a.every((id) => b.includes(id))
+
+// Conserva el orden local de cada grupo cuyos participantes no cambiaron; los demás toman el orden del servidor.
+function conservarOrden(grupos) {
+  const locales = Object.values(ordenEmpate.value)
+  return Object.fromEntries(grupos.map((g, i) => {
+    const local = locales.find((l) => mismoConjunto(l, g))
+    return [i, [...(local ?? g)]]
+  }))
+}
 
 async function cargar() {
-  if (!categoriaId.value) return
+  const id = categoriaId.value
+  if (!id) return
   try {
-    ranking.value = (await trk.get(`/ranking/${categoriaId.value}`)).data
-    puestos.value = ranking.value.categoria.puestos_premiados
-    ordenEmpate.value = Object.fromEntries(ranking.value.empates_sin_resolver.map((g, i) => [i, [...g]]))
-  } catch (e) { error.value = mensajeDeError(e) }
+    const datos = (await trk.get(`/ranking/${id}`)).data
+    if (categoriaId.value !== id) return
+    ranking.value = datos
+    if (tomarPuestos) { puestos.value = datos.categoria.puestos_premiados; tomarPuestos = false }
+    ordenEmpate.value = conservarOrden(datos.empates_sin_resolver)
+  } catch (e) { if (categoriaId.value === id) error.value = mensajeDeError(e) }
 }
 
 async function accion(fn, exito) {
@@ -40,7 +55,7 @@ async function accion(fn, exito) {
   } catch (e) { error.value = mensajeDeError(e) }
 }
 
-const elegir = (id) => { categoriaId.value = id; recienPublicada.value = false; cargar() }
+const elegir = (id) => { categoriaId.value = id; recienPublicada.value = false; tomarPuestos = true; cargar() }
 const abrirCerrar = () => accion(() => trk.post(`/categorias/${categoriaId.value}/${categoria.value.abierta ? 'cerrar' : 'abrir'}`))
 const guardarPuestos = () => accion(() => trk.patch(`/categorias/${categoriaId.value}`, { puestos_premiados: Number(puestos.value) }), 'Puestos premiados actualizados')
 const publicar = () => {
@@ -110,9 +125,9 @@ onMounted(async () => {
         <p class="text-sm">Ordena de mejor a peor y guarda. Esto define el desempate manual (R5).</p>
         <div v-for="(grupo, i) in ordenEmpate" :key="i" class="mt-2 flex flex-col gap-1">
           <div v-for="id in grupo" :key="id" data-test="fila-empate" class="flex items-center gap-2">
-            <span class="flex-1">{{ filaPorId(id).mascota_nombre }}</span>
-            <button class="btn min-w-tactil" :data-test="`subir-empate-${id}`" :aria-label="`Subir ${filaPorId(id).mascota_nombre}`" @click="moverEmpate(i, id, -1)">▲</button>
-            <button class="btn min-w-tactil" :data-test="`bajar-empate-${id}`" :aria-label="`Bajar ${filaPorId(id).mascota_nombre}`" @click="moverEmpate(i, id, 1)">▼</button>
+            <span class="flex-1">{{ filaPorId(id)?.mascota_nombre }}</span>
+            <button class="btn min-w-tactil" :data-test="`subir-empate-${id}`" :aria-label="`Subir ${filaPorId(id)?.mascota_nombre}`" @click="moverEmpate(i, id, -1)">▲</button>
+            <button class="btn min-w-tactil" :data-test="`bajar-empate-${id}`" :aria-label="`Bajar ${filaPorId(id)?.mascota_nombre}`" @click="moverEmpate(i, id, 1)">▼</button>
           </div>
           <button class="btn-primario self-start" data-test="guardar-desempate" @click="guardarDesempate(i)">Guardar desempate</button>
         </div>
