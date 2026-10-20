@@ -111,3 +111,13 @@ describe('I5: perfil persistido para recargas sin conexión', () => {
     expect(JSON.parse(localStorage.getItem('trk_perfil'))).toEqual(JURADO)
   })
 })
+
+test('m1: loginAdmin cierra sesión si cargarPerfil falla con un error que no es 401', async () => {
+  api.post.mockResolvedValue({ data: { token: 'tm' } })
+  trk.get.mockRejectedValue({ status: 500, motivo: 'ERROR', message: 'Falla' })
+  const auth = useAuthStore()
+  await expect(auth.loginAdmin('a@b.co', 'x')).rejects.toMatchObject({ status: 500 })
+  expect(auth.token).toBeNull()
+  const { tokenStorage } = await import('@/services/api')
+  expect(tokenStorage.leer()).toBeNull()
+})

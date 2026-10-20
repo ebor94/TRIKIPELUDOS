@@ -33,7 +33,13 @@ export const useAuthStore = defineStore('auth', {
     async loginAdmin(email, password) {
       const { data } = await api.post('/auth/login', { email, password })
       this.fijarSesion(data.token, null)
-      await this.cargarPerfil()
+      try {
+        await this.cargarPerfil()
+      } catch (e) {
+        // No deja el token de Mantix (válido 24 h para todo Mantix) en un equipo posiblemente compartido.
+        this.logout()
+        throw e
+      }
       if (!this.tiene('administrar')) {
         this.logout()
         throw { status: 403, motivo: 'SIN_PERMISO', message: 'Tu usuario de Mantix no tiene acceso a TRIKIPELUDOS' }
