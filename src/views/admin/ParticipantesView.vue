@@ -91,7 +91,16 @@ function cancelarFusion() {
   destinoFusion.value = ''
 }
 
+const etiqueta = (p) => `${p.mascota_nombre} · ${p.responsable_nombre || 'sin responsable'}`
+
 async function fusionar() {
+  const origen = fusionando.value
+  const destino = lista.value.find((x) => x.id === destinoFusion.value)
+  if (!origen || !destino) return
+  const ok = window.confirm(
+    `¿Fusionar "${etiqueta(origen)}" en "${etiqueta(destino)}"? Las calificaciones pasan al destino y el origen queda oculto. Esta acción no se puede deshacer.`
+  )
+  if (!ok) return
   error.value = ''
   aviso.value = ''
   try {

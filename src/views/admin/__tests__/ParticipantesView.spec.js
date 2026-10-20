@@ -125,3 +125,15 @@ test('Cancelar cierra la fusión y reinicia el destino', async () => {
   await w.get('[data-test="fusionar-t1"]').trigger('click')
   expect(w.get('[data-test="destino-fusion"]').element.value).toBe('')
 })
+
+test('la fusión pide confirmación nombrando ambos registros; cancelar no fusiona', async () => {
+  window.confirm = vi.fn(() => false)
+  const w = mount(ParticipantesView)
+  await flushPromises()
+  await w.get('[data-test="fusionar-t1"]').trigger('click')
+  await w.get('[data-test="destino-fusion"]').setValue('t2')
+  await w.get('[data-test="confirmar-fusion"]').trigger('click')
+  await flushPromises()
+  expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/Thor.*THOR.*no se puede deshacer/s))
+  expect(trk.post).not.toHaveBeenCalled()
+})
