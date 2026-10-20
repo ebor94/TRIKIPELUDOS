@@ -4,6 +4,30 @@ import { clear, createStore } from 'idb-keyval'
 
 vi.mock('@/services/api', () => ({ api: {}, trk: { put: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 
+vi.mock('@/utils/colaOffline', async (importOriginal) => {
+  const real = await importOriginal()
+  const hook = { ventana: null }
+  // Tras la lectura (o antes del borrado atómico) deja entrar una escritura concurrente.
+  const abrir = async () => {
+    const f = hook.ventana
+    hook.ventana = null
+    if (f) await f()
+  }
+  return {
+    ...real,
+    __hook: hook,
+    obtener: async (...a) => {
+      const r = await real.obtener(...a)
+      await abrir()
+      return r
+    },
+    quitarSiVersion: async (...a) => {
+      await abrir()
+      return real.quitarSiVersion(...a)
+    }
+  }
+})
+
 import { trk } from '@/services/api'
 import * as cola from '@/utils/colaOffline'
 import { useCalificacionStore } from '@/stores/calificacion'
@@ -163,4 +187,36 @@ test('ids numéricos y string son equivalentes en la cola', async () => {
   await s.enviar('7', 1, PUNTAJES)
   expect(await cola.listar(7)).toHaveLength(1)
   expect(await cola.listar('7')).toHaveLength(1)
+})
+
+test('quitarSiVersion: false y conserva si la versión difiere; true y borra si coincide', async () => {
+  const item = await cola.encolar({ juradoId: 7, participanteId: 'p1', puntajes: PUNTAJES })
+  expect(await cola.quitarSiVersion(7, 'p1', item.encoladaEn - 1)).toBe(false)
+  expect(await cola.listar(7)).toHaveLength(1)
+  expect(await cola.quitarSiVersion(7, 'p1', item.encoladaEn)).toBe(true)
+  expect(await cola.listar(7)).toEqual([])
+  expect(await cola.quitarSiVersion(7, 'p1', item.encoladaEn)).toBe(false)
+})
+
+test('una calificación nueva encolada entre la lectura y el borrado no se pierde', async () => {
+  const NUEVOS = [{ criterio_id: 1, puntaje: 3 }]
+  trk.put.mockImplementationOnce(async () => {
+    cola.__hook.ventana = () => cola.encolar({ juradoId: 7, participanteId: 'p1', puntajes: NUEVOS })
+    return { data: { id: 1 } }
+  })
+  const s = useCalificacionStore()
+  const item = await cola.encolar({ juradoId: 7, participanteId: 'p1', puntajes: PUNTAJES })
+  s.pendientes = { p1: item }
+  await s.intentar(7, 'p1')
+  const q = await cola.listar(7)
+  expect(q).toHaveLength(1)
+  expect(q[0].puntajes).toEqual(NUEVOS)
+})
+
+test('intentar sin item en la cola limpia pendientes en memoria', async () => {
+  const s = useCalificacionStore()
+  s.pendientes = { p1: { juradoId: '7', participanteId: 'p1', puntajes: PUNTAJES, encoladaEn: 1 } }
+  const r = await s.intentar(7, 'p1')
+  expect(r.estado).toBe('ENVIADA')
+  expect(s.pendientes).toEqual({})
 })

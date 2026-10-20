@@ -50,7 +50,10 @@ export const useCalificacionStore = defineStore('calificacion', {
     async _intentar(juradoId, participanteId) {
       if (String(sesionId()) !== String(juradoId)) return { estado: 'PENDIENTE' }
       const item = await cola.obtener(juradoId, participanteId)
-      if (!item) return { estado: 'ENVIADA' }
+      if (!item) {
+        this.olvidar(participanteId)
+        return { estado: 'ENVIADA' }
+      }
       let resultado
       try {
         const { data } = await trk.put(`/calificaciones/${participanteId}`, { puntajes: item.puntajes })
@@ -60,12 +63,10 @@ export const useCalificacionStore = defineStore('calificacion', {
         resultado = { estado: 'RECHAZADA', error: e }
       }
       // Solo se quita si la entrada sigue siendo la que se envió (pudo llegar una más nueva).
-      const actual = await cola.obtener(juradoId, participanteId)
-      if (actual && actual.encoladaEn === item.encoladaEn) await this.sacar(juradoId, participanteId)
+      if (await cola.quitarSiVersion(juradoId, participanteId, item.encoladaEn)) this.olvidar(participanteId)
       return resultado
     },
-    async sacar(juradoId, participanteId) {
-      await cola.quitar(juradoId, participanteId)
+    olvidar(participanteId) {
       const resto = { ...this.pendientes }
       delete resto[String(participanteId)]
       this.pendientes = resto

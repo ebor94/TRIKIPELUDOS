@@ -21,3 +21,22 @@ export async function listar(juradoId) {
 }
 
 export const quitar = (juradoId, participanteId) => del(clave(juradoId, participanteId), almacen)
+
+// Borra solo si la versión almacenada sigue siendo `encoladaEn`; get + compare + delete en UNA transacción.
+export const quitarSiVersion = (juradoId, participanteId, encoladaEn) =>
+  almacen(
+    'readwrite',
+    (store) =>
+      new Promise((resolve, reject) => {
+        const k = clave(juradoId, participanteId)
+        const lectura = store.get(k)
+        lectura.onerror = () => reject(lectura.error)
+        lectura.onsuccess = () => {
+          const actual = lectura.result
+          if (!actual || actual.encoladaEn !== encoladaEn) return resolve(false)
+          const borrado = store.delete(k)
+          borrado.onerror = () => reject(borrado.error)
+          borrado.onsuccess = () => resolve(true)
+        }
+      })
+  )
