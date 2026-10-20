@@ -8,6 +8,7 @@ import { mensajeDeError } from '@/utils/errores'
 const auth = useAuthStore()
 const datos = ref(null)
 const error = ref('')
+const urlPantalla = `${import.meta.env.BASE_URL}pantalla`
 const ESTADOS = [['INSCRITO', 'Inscritos'], ['PRESENTE', 'Presentes'], ['EN_PASARELA', 'En pasarela'], ['PRESENTADO', 'Presentados'], ['AUSENTE', 'Ausentes']]
 
 async function cargar() {
@@ -31,8 +32,8 @@ onMounted(cargar)
   <section class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-2xl font-bold">Tablero</h2>
-      <div class="flex gap-2">
-        <a class="btn-claro" href="../pantalla" target="_blank" rel="noopener">Abrir pantalla</a>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn-claro" data-test="abrir-pantalla" :href="urlPantalla" target="_blank" rel="noopener">Abrir pantalla</a>
         <button class="btn-secundario" data-test="pantalla-pasarela" @click="pantalla({ modo: 'PASARELA' })">Pantalla: pasarela</button>
       </div>
     </div>

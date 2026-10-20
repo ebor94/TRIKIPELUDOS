@@ -38,5 +38,9 @@ useTiempoReal({
       </div>
       <img v-else data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
     </section>
+
+    <section v-else class="flex flex-1 items-center justify-center">
+      <img data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
+    </section>
   </main>
 </template>

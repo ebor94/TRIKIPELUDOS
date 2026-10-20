@@ -34,3 +34,17 @@ test('cambia la pantalla a modo pasarela', async () => {
   await w.get('[data-test="pantalla-pasarela"]').trigger('click')
   expect(trk.put).toHaveBeenCalledWith('/evento/pantalla', { modo: 'PASARELA' })
 })
+
+test('el enlace "Abrir pantalla" respeta la base /trikipeludos/', async () => {
+  const w = mount(TableroView)
+  await flushPromises()
+  const enlace = w.get('[data-test="abrir-pantalla"]')
+  expect(enlace.attributes('href')).toBe(`${import.meta.env.BASE_URL}pantalla`)
+  expect(enlace.attributes('href').startsWith(import.meta.env.BASE_URL)).toBe(true)
+})
+
+test('los botones de la cabecera envuelven en pantallas de 360 px', async () => {
+  const w = mount(TableroView)
+  await flushPromises()
+  expect(w.get('[data-test="abrir-pantalla"]').element.parentElement.className).toContain('flex-wrap')
+})

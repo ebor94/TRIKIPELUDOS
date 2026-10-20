@@ -31,3 +31,10 @@ test('sin nadie en pasarela muestra el logo del evento', async () => {
   await flushPromises()
   expect(w.find('[data-test="logo"]').exists()).toBe(true)
 })
+
+test('modo ranking sin contenido propio muestra el logo (no queda en blanco)', async () => {
+  trk.get.mockResolvedValue({ data: { modo_pantalla: 'RANKING', categoria_pantalla: null, ranking: null, en_pasarela: null } })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.find('[data-test="logo"]').exists()).toBe(true)
+})
