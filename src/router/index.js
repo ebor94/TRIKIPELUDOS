@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 export const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } },
+  { path: '/pantalla', component: () => import('@/views/PantallaView.vue'), meta: { publica: true } },
   { path: '/cabina', component: () => import('@/views/CabinaView.vue'), meta: { permiso: 'cabina' } },
   { path: '/comentarista', component: () => import('@/views/ComentaristaView.vue'), meta: { permiso: 'pasarela' } },
   {
@@ -11,7 +12,7 @@ export const routes = [
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { permiso: 'administrar' },
     children: [
-      { path: '', redirect: '/admin/usuarios' },
+      { path: '', component: () => import('@/views/admin/TableroView.vue') },
       { path: 'usuarios', component: () => import('@/views/admin/UsuariosView.vue') },
       { path: 'importar', component: () => import('@/views/admin/ImportarView.vue') }
     ]
