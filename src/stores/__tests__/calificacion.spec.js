@@ -249,3 +249,26 @@ test('I1: sin token o con token ilegible no envía', async () => {
   expect((await s.intentar(7, 'p1')).estado).toBe('PENDIENTE')
   expect(trk.put).not.toHaveBeenCalled()
 })
+
+test('I3: un rechazo en la sincronización de fondo guarda motivo y mensaje por participante', async () => {
+  trk.put.mockRejectedValueOnce({ status: 0 })
+  const s = useCalificacionStore()
+  await s.enviar(7, 'p1', PUNTAJES)
+  trk.put.mockRejectedValueOnce({ status: 409, motivo: 'CATEGORIA_CERRADA', message: 'La categoría está cerrada', errors: [] })
+  await s.sincronizar(7)
+  expect(s.pendientes).toEqual({})
+  expect(s.rechazadas.p1).toEqual({ motivo: 'CATEGORIA_CERRADA', message: 'La categoría está cerrada' })
+})
+
+test('I3: reenviar limpia el rechazo previo; reiniciar también', async () => {
+  trk.put.mockRejectedValueOnce({ status: 422, motivo: 'VALIDACION', message: 'Error', errors: [{ mensaje: 'Puntaje fuera de rango' }] })
+  const s = useCalificacionStore()
+  await s.enviar(7, 'p1', PUNTAJES)
+  expect(s.rechazadas.p1.message).toBe('Puntaje fuera de rango')
+  trk.put.mockResolvedValueOnce({ data: { id: 1 } })
+  await s.enviar(7, 'p1', PUNTAJES)
+  expect(s.rechazadas.p1).toBeUndefined()
+  s.rechazadas = { p2: { motivo: 'X', message: 'y' } }
+  s.reiniciar()
+  expect(s.rechazadas).toEqual({})
+})

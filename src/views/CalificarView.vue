@@ -66,8 +66,9 @@ watch(() => store.pendientes[route.params.id], async (nuevo, previo) => {
   if (!previo || nuevo || desmontado) return
   encolada.value = false
   await cargar({ conservar: true })
-  if (!enviada.value && !error.value) {
-    error.value = 'La calificación pendiente no pudo registrarse; revisa los puntajes y vuelve a enviar.'
+  // Muestra el motivo del servidor (HU-8 CA5) y reemplaza cualquier error anterior.
+  if (!enviada.value) {
+    error.value = (store.rechazadas[route.params.id] || {}).message || 'La calificación pendiente no pudo registrarse; revisa los puntajes y vuelve a enviar.'
   }
 })
 
@@ -77,6 +78,8 @@ onMounted(async () => {
   detenerSync = store.iniciarAutoSincronizacion(juradoId.value)
   await store.cargarPendientes(juradoId.value).catch(() => {})
   await carga
+  const rechazo = store.rechazadas[route.params.id]
+  if (rechazo && !enviada.value && !desmontado) error.value = rechazo.message
 })
 onBeforeUnmount(() => {
   desmontado = true

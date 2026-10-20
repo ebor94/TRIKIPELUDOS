@@ -94,3 +94,15 @@ test('un error al leer la cola local no impide la auto-sincronización', async (
   w.unmount()
   expect(detener).toHaveBeenCalledTimes(1)
 })
+
+test('I3: una calificación rechazada en segundo plano muestra insignia Rechazada y el motivo', async () => {
+  const cola = useCalificacionStore()
+  cola.cargarPendientes = vi.fn(async () => {})
+  cola.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  cola.rechazadas = { l: { motivo: 'CATEGORIA_CERRADA', message: 'La categoría está cerrada' } }
+  const w = mount(JuradoView)
+  await flushPromises()
+  expect(w.get('[data-test="insignia-l"]').text()).toBe('Rechazada')
+  expect(w.get('[data-test="rechazadas"]').text()).toContain('Luna')
+  expect(w.get('[data-test="rechazadas"]').text()).toContain('La categoría está cerrada')
+})

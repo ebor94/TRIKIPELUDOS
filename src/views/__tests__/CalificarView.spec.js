@@ -178,3 +178,32 @@ test('si el servidor rechaza la calificación al enviar, conserva los puntajes y
   expect(w.get('[data-test="total"]').text()).toBe('80 / 100')
   expect(w.findAll('input[type="range"]').map((r) => r.element.value)).toEqual(['30', '25', '15', '10'])
 })
+
+test('I3: si la sincronización de fondo la rechaza, muestra el motivo del servidor (reemplaza un error viejo)', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(async () => {})
+  s.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  s.enviar = vi.fn(async () => {
+    s.pendientes = { p1: { participanteId: 'p1' } }
+    return { estado: 'PENDIENTE' }
+  })
+  const w = mount(CalificarView)
+  await flushPromises()
+  await tocarTodos(w)
+  await w.get('[data-test="enviar"]').trigger('click')
+  await flushPromises()
+  s.rechazadas = { p1: { motivo: 'CATEGORIA_CERRADA', message: 'La categoría está cerrada' } }
+  s.pendientes = {}
+  await flushPromises()
+  expect(w.get('[role="alert"]').text()).toBe('La categoría está cerrada')
+})
+
+test('I3: al abrir una mascota cuya calificación fue rechazada se ve el motivo', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(async () => {})
+  s.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  s.rechazadas = { p1: { motivo: 'CALIFICACION_BLOQUEADA', message: 'Ya calificaste esta mascota' } }
+  const w = mount(CalificarView)
+  await flushPromises()
+  expect(w.get('[role="alert"]').text()).toBe('Ya calificaste esta mascota')
+})

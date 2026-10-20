@@ -3,6 +3,7 @@ import { trk, tokenStorage } from '@/services/api'
 import * as cola from '@/utils/colaOffline'
 import { useAuthStore } from '@/stores/auth'
 import { idDelToken } from '@/utils/sesionLocal'
+import { mensajeDeError } from '@/utils/errores'
 
 // Solo es definitivo un 4xx (distinto de 401/408/429) con status entero; todo lo demás se reintenta.
 const definitivo = (e) => {
@@ -27,10 +28,12 @@ const esSesionDe = (juradoId) =>
   String(useAuthStore().usuario?.id) === String(juradoId) && String(idDelToken(tokenStorage.leer())) === String(juradoId)
 
 export const useCalificacionStore = defineStore('calificacion', {
-  state: () => ({ pendientes: {}, sincronizando: false }),
+  // rechazadas: participanteId → { motivo, message } de un 409/422 (también en la sincronización de fondo, HU-8 CA5).
+  state: () => ({ pendientes: {}, rechazadas: {}, sincronizando: false }),
   actions: {
     reiniciar() {
       this.pendientes = {}
+      this.rechazadas = {}
     },
     async cargarPendientes(juradoId) {
       const items = await cola.listar(juradoId)
@@ -44,6 +47,7 @@ export const useCalificacionStore = defineStore('calificacion', {
       this.pendientes = nuevos
     },
     async enviar(juradoId, participanteId, puntajes) {
+      this.quitarRechazo(participanteId)
       const item = await cola.encolar({ juradoId, participanteId, puntajes })
       this.pendientes = { ...this.pendientes, [item.participanteId]: item }
       return this.intentar(juradoId, participanteId)
@@ -62,13 +66,26 @@ export const useCalificacionStore = defineStore('calificacion', {
       try {
         const { data } = await trk.put(`/calificaciones/${participanteId}`, { puntajes: item.puntajes })
         resultado = { estado: 'ENVIADA', calificacion: data }
+        this.quitarRechazo(participanteId)
       } catch (e) {
         if (!definitivo(e)) return { estado: 'PENDIENTE' }
         resultado = { estado: 'RECHAZADA', error: e }
       }
       // Solo se quita si la entrada sigue siendo la que se envió (pudo llegar una más nueva).
-      if (await cola.quitarSiVersion(juradoId, participanteId, item.encoladaEn)) this.olvidar(participanteId)
+      if (await cola.quitarSiVersion(juradoId, participanteId, item.encoladaEn)) {
+        this.olvidar(participanteId)
+        if (resultado.estado === 'RECHAZADA') {
+          const e = resultado.error
+          this.rechazadas = { ...this.rechazadas, [String(participanteId)]: { motivo: e?.motivo || 'ERROR', message: mensajeDeError(e) } }
+        }
+      }
       return resultado
+    },
+    quitarRechazo(participanteId) {
+      if (!this.rechazadas[String(participanteId)]) return
+      const resto = { ...this.rechazadas }
+      delete resto[String(participanteId)]
+      this.rechazadas = resto
     },
     olvidar(participanteId) {
       const resto = { ...this.pendientes }

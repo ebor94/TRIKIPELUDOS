@@ -24,10 +24,17 @@ const CALIFICABLES = ['EN_PASARELA', 'PRESENTADO']
 function insignia(p) {
   if (mias.value[p.id]) return ['Calificada', 'bg-green-100 text-green-900']
   if (cola.pendientes[p.id]) return ['Por sincronizar', 'bg-calabaza-100 text-calabaza-900']
+  if (cola.rechazadas[p.id]) return ['Rechazada', 'bg-red-100 text-red-900']
   if (!CALIFICABLES.includes(p.estado)) return ['Aún no sale', 'bg-gray-200 text-gray-700']
   return ['Pendiente', 'bg-morado-100 text-morado-900']
 }
 const enPasarela = computed(() => evento.enPasarela)
+// Rechazos de la sincronización de fondo (409/422) con su motivo, salvo las que ya quedaron calificadas.
+const rechazadas = computed(() =>
+  Object.entries(cola.rechazadas)
+    .filter(([pid]) => !mias.value[pid])
+    .map(([pid, r]) => ({ pid, nombre: (galeria.value.find((p) => String(p.id) === pid) || {}).mascota_nombre || 'Una mascota', message: r.message }))
+)
 
 async function cargar() {
   try {
@@ -70,6 +77,12 @@ onBeforeUnmount(() => detenerSync && detenerSync())
     <BarraSuperior titulo="Jurado" />
     <main class="mx-auto flex max-w-xl flex-col gap-4 p-4">
       <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
+      <div v-if="rechazadas.length" data-test="rechazadas" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">
+        <p class="font-semibold">Calificaciones no registradas (revisa y vuelve a enviar):</p>
+        <ul class="list-disc pl-5">
+          <li v-for="r in rechazadas" :key="r.pid"><strong>{{ r.nombre }}</strong>: {{ r.message }}</li>
+        </ul>
+      </div>
 
       <section v-if="enPasarela" data-test="en-pasarela" class="tarjeta flex flex-col gap-3 border-2 border-calabaza-500">
         <p class="text-sm font-bold uppercase text-calabaza-800">🎃 En pasarela ahora</p>
