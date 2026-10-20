@@ -3,7 +3,16 @@ import { useAuthStore } from '@/stores/auth'
 
 export const routes = [
   { path: '/', redirect: '/login' },
-  { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } }
+  { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } },
+  {
+    path: '/admin',
+    component: () => import('@/views/admin/AdminLayout.vue'),
+    meta: { permiso: 'administrar' },
+    children: [
+      { path: '', redirect: '/admin/usuarios' },
+      { path: 'usuarios', component: () => import('@/views/admin/UsuariosView.vue') }
+    ]
+  }
 ]
 
 export function decidirNavegacion(to, auth) {
