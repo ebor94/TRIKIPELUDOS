@@ -15,6 +15,7 @@ const nombreCategoria = (codigo) => (categorias.porCodigo(codigo) || {}).nombre 
 const categoriaFinal = (f) => decisiones.categoria[f.indice] || f.datos.categoria_codigo
 const conservada = (f) => !f.grupo_duplicado || Number(decisiones.conservar[f.grupo_duplicado]) === f.indice
 const seImporta = (f) => !decisiones.omitir.has(f.indice) && conservada(f) && Boolean(categoriaFinal(f))
+  && Boolean(f.datos.mascota_nombre) && Boolean(f.datos.responsable_nombre)
 const totalAImportar = computed(() => (vista.value ? vista.value.filas.filter(seImporta).length : 0))
 
 onMounted(() => categorias.cargar().catch((e) => { error.value = mensajeDeError(e) }))
@@ -22,6 +23,7 @@ onMounted(() => categorias.cargar().catch((e) => { error.value = mensajeDeError(
 async function subir(evento) {
   const archivo = evento.target.files && evento.target.files[0]
   if (!archivo) return
+  const input = evento.target
   error.value = ''
   resultado.value = null
   cargando.value = true
@@ -37,6 +39,7 @@ async function subir(evento) {
     error.value = mensajeDeError(e)
   } finally {
     cargando.value = false
+    input.value = ''
   }
 }
 
@@ -89,9 +92,9 @@ async function confirmar() {
             <span class="rounded-full bg-morado-100 px-3 py-1 text-sm">{{ nombreCategoria(categoriaFinal(f)) }}</span>
           </div>
           <ul class="flex flex-col gap-1 text-sm">
-            <li v-for="(a, i) in f.advertencias" :key="`a${i}`" class="rounded-lg bg-calabaza-50 p-2 text-calabaza-900">
+            <li v-for="(a, i) in f.advertencias" :key="`a${i}`" class="flex flex-wrap items-center gap-2 rounded-lg bg-calabaza-50 p-2 text-calabaza-900">
               ⚠️ {{ a.mensaje }}
-              <button v-if="a.sugerencia && categoriaFinal(f) !== a.sugerencia" class="btn-claro ml-2 min-h-0 py-1" :data-test="`sugerencia-${f.indice}`" @click="decisiones.categoria[f.indice] = a.sugerencia">
+              <button v-if="a.sugerencia && categoriaFinal(f) !== a.sugerencia" class="btn-claro" :data-test="`sugerencia-${f.indice}`" @click="decisiones.categoria[f.indice] = a.sugerencia">
                 Usar {{ nombreCategoria(a.sugerencia) }}
               </button>
             </li>
@@ -102,9 +105,9 @@ async function confirmar() {
               <input type="radio" :name="f.grupo_duplicado" :value="f.indice" :data-test="`conservar-${f.indice}`" :checked="conservada(f)" @change="decisiones.conservar[f.grupo_duplicado] = f.indice" />
               Conservar esta
             </label>
-            <label v-if="f.errores.length" class="flex items-center gap-2">
+            <label v-if="f.errores.length" class="flex min-h-tactil items-center gap-2">
               Categoría:
-              <select class="campo w-auto" @change="decisiones.categoria[f.indice] = $event.target.value">
+              <select class="campo min-h-tactil w-auto" :data-test="`categoria-${f.indice}`" :value="decisiones.categoria[f.indice] || ''" @change="decisiones.categoria[f.indice] = $event.target.value">
                 <option value="">—</option>
                 <option v-for="c in categorias.lista" :key="c.codigo" :value="c.codigo">{{ c.nombre }}</option>
               </select>
