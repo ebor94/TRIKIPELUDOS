@@ -9,7 +9,7 @@ const t = computed(() => (props.grande
   : { nombre: 'text-2xl', dato: 'text-base', disfraz: 'text-lg' }))
 const detalles = computed(() => [
   props.participante.raza,
-  props.participante.edad_texto ? `${props.participante.edad_texto}` : null,
+  props.participante.edad_texto ? `Edad: ${props.participante.edad_texto}` : null,
   SEXO[props.participante.sexo]
 ].filter(Boolean))
 </script>

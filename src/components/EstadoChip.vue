@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 
-const props = defineProps({ estado: { type: String, required: true } })
+const props = defineProps({ estado: { type: String, required: true }, grande: { type: Boolean, default: false } })
 const ESTILOS = {
   INSCRITO: ['Inscrito', 'bg-gray-200 text-gray-800'],
   PRESENTE: ['Presente', 'bg-green-100 text-green-900'],
@@ -13,5 +13,5 @@ const estilo = computed(() => ESTILOS[props.estado] || [props.estado, 'bg-gray-2
 </script>
 
 <template>
-  <span :class="['inline-block rounded-full px-3 py-1 text-sm font-semibold', estilo[1]]">{{ estilo[0] }}</span>
+  <span :class="['inline-block rounded-full font-semibold', grande ? 'text-2xl px-4 py-2' : 'text-sm px-3 py-1', estilo[1]]">{{ estilo[0] }}</span>
 </template>

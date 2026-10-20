@@ -68,3 +68,36 @@ test('se suscribe a pasarela:cambio y participante:actualizado', async () => {
   const opciones = useTiempoReal.mock.calls[0][0]
   expect(Object.keys(opciones.eventos)).toEqual(expect.arrayContaining(['pasarela:cambio', 'participante:actualizado', 'foto:nueva']))
 })
+
+test('el asa de arrastre y los botones de la fila tienen área táctil de 44 px', async () => {
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  const asa = w.get('.asa')
+  expect(asa.classes()).toEqual(expect.arrayContaining(['min-h-tactil', 'min-w-tactil']))
+})
+
+test('el chip de la tarjeta grande es text-2xl', async () => {
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  expect(w.get('[data-test="ficha"]').find('span.text-2xl.rounded-full').exists()).toBe(true)
+})
+
+test('tras reordenar la tarjeta sigue mostrando la misma mascota', async () => {
+  trk.put.mockResolvedValue({ data: [cola[0], cola[2], cola[1]] })
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  await w.get('[data-test="siguiente"]').trigger('click')
+  expect(w.get('[data-test="ficha"]').text()).toContain('Rocky')
+  await w.get('[data-test="bajar-a"]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test="ficha"]').text()).toContain('Rocky')
+})
+
+test('subir envía el nuevo orden (▲)', async () => {
+  trk.put.mockResolvedValue({ data: [cola[1], cola[0], cola[2]] })
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  await w.get('[data-test="subir-b"]').trigger('click')
+  await flushPromises()
+  expect(trk.put).toHaveBeenCalledWith('/pasarela/orden', { categoria_id: 1, orden: ['b', 'a', 'c'] })
+})

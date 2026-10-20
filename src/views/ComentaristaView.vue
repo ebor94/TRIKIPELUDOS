@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import draggable from 'vuedraggable'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -33,6 +33,14 @@ async function cargarCola() {
     indice.value = i >= 0 ? i : 0
   } catch (e) { error.value = mensajeDeError(e) }
 }
+onBeforeUnmount(() => clearTimeout(recarga))
+// Reemplaza la lista conservando la mascota seleccionada (por id).
+function fijarCola(lista) {
+  const id = actual.value && actual.value.id
+  cola.value = lista
+  const i = lista.findIndex((p) => p.id === id)
+  if (i >= 0) indice.value = i
+}
 const recargarPronto = () => { clearTimeout(recarga); recarga = setTimeout(cargarCola, 300) }
 
 function elegirCategoria(id) {
@@ -56,7 +64,7 @@ async function llamar() {
 
 async function guardarOrden(nuevo) {
   try {
-    cola.value = (await trk.put('/pasarela/orden', { categoria_id: categoriaId.value, orden: nuevo.map((p) => p.id) })).data
+    fijarCola((await trk.put('/pasarela/orden', { categoria_id: categoriaId.value, orden: nuevo.map((p) => p.id) })).data)
   } catch (e) {
     error.value = mensajeDeError(e)
     cargarCola()
@@ -69,7 +77,7 @@ function desplazar(id, paso) {
   const j = i + paso
   if (i < 0 || j < 0 || j >= lista.length) return
   ;[lista[i], lista[j]] = [lista[j], lista[i]]
-  cola.value = lista
+  fijarCola(lista)
   guardarOrden(lista)
 }
 
@@ -101,7 +109,7 @@ onMounted(async () => {
       <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800 md:col-span-2" role="alert">{{ error }}</p>
 
       <section v-if="actual" data-test="ficha" class="tarjeta flex flex-col gap-3">
-        <div class="flex items-center justify-between"><EstadoChip :estado="actual.estado" /><span class="text-2xl">{{ indice + 1 }} / {{ cola.length }}</span></div>
+        <div class="flex items-center justify-between"><EstadoChip :estado="actual.estado" grande /><span class="text-2xl">{{ indice + 1 }} / {{ cola.length }}</span></div>
         <FichaMascota :participante="actual" grande />
         <div class="grid grid-cols-2 gap-2">
           <button class="btn-claro min-h-[56px] text-2xl" data-test="anterior" :disabled="indice === 0" @click="mover(-1)">◀ Anterior</button>
@@ -112,17 +120,21 @@ onMounted(async () => {
 
       <aside class="tarjeta">
         <h2 class="mb-2 text-xl font-bold">Cola de salida</h2>
-        <draggable :model-value="cola" item-key="id" handle=".asa" @update:model-value="(l) => { cola = l; guardarOrden(l) }">
+        <draggable :model-value="cola" item-key="id" handle=".asa" @update:model-value="(l) => { fijarCola(l); guardarOrden(l) }">
           <template #item="{ element, index }">
-            <div class="flex items-center gap-2 border-b border-morado-100 py-2" :class="index === indice ? 'bg-calabaza-50' : ''">
-              <span class="asa cursor-grab select-none px-1 text-xl" aria-hidden="true">⠿</span>
-              <button class="flex flex-1 items-center gap-2 text-left" @click="indice = index">
+            <div class="flex items-center gap-1 border-b border-morado-100 py-2" :class="index === indice ? 'bg-calabaza-50' : ''">
+              <span class="asa inline-flex min-h-tactil min-w-tactil cursor-grab touch-none select-none items-center justify-center text-xl" aria-hidden="true">⠿</span>
+              <button class="flex min-h-tactil min-w-0 flex-1 items-center gap-2 text-left" @click="indice = index">
                 <FotoMascota :participante="element" clase="h-12 w-10 shrink-0 rounded-lg" />
-                <span class="flex-1 font-semibold">{{ element.mascota_nombre }}</span>
-                <EstadoChip :estado="element.estado" />
+                <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                  <span class="w-full truncate font-semibold">{{ element.mascota_nombre }}</span>
+                  <EstadoChip :estado="element.estado" />
+                </span>
               </button>
-              <button class="btn min-w-tactil px-2" :aria-label="`Subir ${element.mascota_nombre}`" :data-test="`subir-${element.id}`" @click="desplazar(element.id, -1)">▲</button>
-              <button class="btn min-w-tactil px-2" :aria-label="`Bajar ${element.mascota_nombre}`" :data-test="`bajar-${element.id}`" @click="desplazar(element.id, 1)">▼</button>
+              <div class="flex shrink-0 flex-col">
+                <button class="btn min-w-tactil px-2" :aria-label="`Subir ${element.mascota_nombre}`" :data-test="`subir-${element.id}`" @click="desplazar(element.id, -1)">▲</button>
+                <button class="btn min-w-tactil px-2" :aria-label="`Bajar ${element.mascota_nombre}`" :data-test="`bajar-${element.id}`" @click="desplazar(element.id, 1)">▼</button>
+              </div>
             </div>
           </template>
         </draggable>

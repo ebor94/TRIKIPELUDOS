@@ -10,7 +10,7 @@ const p = {
 
 test('muestra los campos de HU-6 CA1 y nada más del responsable', () => {
   const w = mount(FichaMascota, { props: { participante: p, grande: true } })
-  for (const texto of ['Canela', 'Bruja de Oz', 'Criollo', '3', 'Hembra', 'Caninos pequeños y medianos', 'Laura']) expect(w.text()).toContain(texto)
+  for (const texto of ['Canela', 'Bruja de Oz', 'Criollo', 'Edad: 3', 'Hembra', 'Caninos pequeños y medianos', 'Laura']) expect(w.text()).toContain(texto)
   expect(w.text()).not.toContain('3001112233')
 })
 
