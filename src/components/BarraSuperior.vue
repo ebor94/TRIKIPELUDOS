@@ -1,12 +1,14 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCalificacionStore } from '@/stores/calificacion'
 
 defineProps({ titulo: { type: String, required: true } })
 const auth = useAuthStore()
 const router = useRouter()
 
 function salir() {
+  useCalificacionStore().reiniciar()
   auth.logout()
   router.push('/login')
 }
