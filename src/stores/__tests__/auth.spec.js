@@ -54,3 +54,60 @@ test('rutaInicio por permiso', () => {
   auth.usuario = null
   expect(auth.rutaInicio).toBe('/login')
 })
+
+const b64url = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const jwtDe = (id) => `h.${b64url({ id, scope: 'trk' })}.f`
+const JURADO = { id: 7, nombre: 'Jurado', rol: 'TRK_JURADO', permisos: { calificar: true } }
+
+describe('I5: perfil persistido para recargas sin conexión', () => {
+  beforeEach(() => localStorage.clear())
+
+  test('al entrar guarda el perfil mínimo y al salir lo borra', async () => {
+    trk.post.mockResolvedValue({ data: { token: jwtDe(7), usuario: { ...JURADO, extra: 'x' } } })
+    const auth = useAuthStore()
+    await auth.loginPin(7, '123456')
+    expect(JSON.parse(localStorage.getItem('trk_perfil'))).toEqual(JURADO)
+    auth.logout()
+    expect(localStorage.getItem('trk_perfil')).toBeNull()
+  })
+
+  test('sin conexión (status 0) cargarPerfil usa el perfil guardado del mismo usuario del token', async () => {
+    localStorage.setItem('trk_perfil', JSON.stringify(JURADO))
+    const auth = useAuthStore()
+    auth.token = jwtDe(7)
+    trk.get.mockRejectedValue({ status: 0, motivo: 'SIN_CONEXION' })
+    await expect(auth.cargarPerfil()).resolves.toEqual(JURADO)
+    expect(auth.tiene('calificar')).toBe(true)
+    expect(auth.token).toBe(jwtDe(7))
+  })
+
+  test('sin conexión no usa un perfil guardado de otro usuario', async () => {
+    localStorage.setItem('trk_perfil', JSON.stringify(JURADO))
+    const auth = useAuthStore()
+    auth.token = jwtDe(8)
+    trk.get.mockRejectedValue({ status: 0 })
+    await expect(auth.cargarPerfil()).rejects.toMatchObject({ status: 0 })
+    expect(auth.usuario).toBeNull()
+  })
+
+  test('un 401 cierra sesión y borra el perfil guardado; un 500 no usa la caché', async () => {
+    localStorage.setItem('trk_perfil', JSON.stringify(JURADO))
+    const auth = useAuthStore()
+    auth.token = jwtDe(7)
+    trk.get.mockRejectedValueOnce({ status: 500 })
+    await expect(auth.cargarPerfil()).rejects.toMatchObject({ status: 500 })
+    expect(auth.usuario).toBeNull()
+    trk.get.mockRejectedValueOnce({ status: 401 })
+    await expect(auth.cargarPerfil()).rejects.toMatchObject({ status: 401 })
+    expect(auth.token).toBeNull()
+    expect(localStorage.getItem('trk_perfil')).toBeNull()
+  })
+
+  test('cargarPerfil exitoso actualiza el perfil guardado', async () => {
+    const auth = useAuthStore()
+    auth.token = jwtDe(7)
+    trk.get.mockResolvedValue({ data: JURADO })
+    await auth.cargarPerfil()
+    expect(JSON.parse(localStorage.getItem('trk_perfil'))).toEqual(JURADO)
+  })
+})

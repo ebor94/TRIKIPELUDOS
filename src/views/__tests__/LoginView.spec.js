@@ -5,10 +5,11 @@ import { setActivePinia, createPinia } from 'pinia'
 const push = vi.fn()
 const ruta = vi.hoisted(() => ({ query: {} }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace: push }), useRoute: () => ruta }))
+const tokenGuardado = vi.hoisted(() => ({ valor: null }))
 vi.mock('@/services/api', () => ({
   api: { post: vi.fn() },
   trk: { get: vi.fn(), post: vi.fn() },
-  tokenStorage: { leer: () => null, guardar: () => {} }
+  tokenStorage: { leer: () => tokenGuardado.valor, guardar: (t) => { tokenGuardado.valor = t } }
 }))
 
 import { trk } from '@/services/api'
@@ -18,6 +19,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   ruta.query = {}
+  tokenGuardado.valor = null
+  localStorage.clear()
   trk.get.mockResolvedValue({ data: [{ id: 3, nombre: 'Jurado Ana', rol: 'TRK_JURADO' }, { id: 4, nombre: 'Cabina', rol: 'TRK_CABINA' }] })
 })
 
@@ -62,4 +65,17 @@ test('redirect en forma de arreglo se normaliza a texto', async () => {
   await w.get('[data-test="entrar-pin"]').trigger('submit')
   await flushPromises()
   expect(push).toHaveBeenCalledWith('/jurado/calificar/p1')
+})
+
+test('I5: con sesión guardada (aunque no haya conexión) /login lleva a su pantalla de inicio', async () => {
+  tokenGuardado.valor = `h.${btoa(JSON.stringify({ id: 3 })).replace(/=+$/, '')}.f`
+  localStorage.setItem('trk_perfil', JSON.stringify({ id: 3, nombre: 'Jurado Ana', rol: 'TRK_JURADO', permisos: { calificar: true } }))
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/auth/yo') throw { status: 0, motivo: 'SIN_CONEXION' }
+    throw { status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor' }
+  })
+  setActivePinia(createPinia())
+  mount(LoginView)
+  await flushPromises()
+  expect(push).toHaveBeenCalledWith('/jurado')
 })

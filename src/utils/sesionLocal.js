@@ -15,3 +15,23 @@ export function idDelToken(token) {
     return null
   }
 }
+
+// Perfil mínimo de la sesión, persistido junto al token para que una recarga sin conexión
+// (iOS descarta pestañas, pull-to-refresh) no saque al jurado a /login (I5).
+const CLAVE_PERFIL = 'trk_perfil'
+const minimo = (u) => ({ id: u.id, nombre: u.nombre, rol: u.rol, permisos: u.permisos || {} })
+
+export const perfilStorage = {
+  leer() {
+    try {
+      const crudo = localStorage.getItem(CLAVE_PERFIL)
+      return crudo ? JSON.parse(crudo) : null
+    } catch { return null }
+  },
+  guardar(usuario) {
+    try {
+      if (usuario) localStorage.setItem(CLAVE_PERFIL, JSON.stringify(minimo(usuario)))
+      else localStorage.removeItem(CLAVE_PERFIL)
+    } catch { /* almacenamiento no disponible */ }
+  }
+}

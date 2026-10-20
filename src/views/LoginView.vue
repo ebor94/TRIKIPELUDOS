@@ -24,6 +24,11 @@ const sesionExpirada = computed(() => route.query.motivo === 'SESION_EXPIRADA')
 const primero = (v) => String([].concat(v ?? '')[0] || '')
 
 onMounted(async () => {
+  // Con una sesión guardada (también sin conexión, con el perfil persistido) se vuelve a su pantalla (I5).
+  if (auth.token && !sesionExpirada.value) {
+    if (!auth.usuario) await auth.cargarPerfil().catch(() => {})
+    if (auth.usuario && auth.rutaInicio !== '/login') return router.replace(auth.rutaInicio)
+  }
   try {
     const { data } = await trk.get('/auth/usuarios-pin')
     usuarios.value = data

@@ -9,6 +9,7 @@ Dispositivos: 1 portátil (admin), 1 celular con cámara (cabina), 1 tablet (com
 | 3 | Cabina inscribe un participante de último minuto | Aparece en la cola del comentarista | ☐ |
 | 4 | Comentarista llama a pasarela | Jurados y pantalla cambian en < 2 s | ☐ |
 | 5 | Un jurado califica en modo avión y luego se reconecta | "Pendiente de sincronizar" y luego "Calificada" | ☐ |
+| 5b | Con el jurado en modo avión, recargar la app y luego tocar "Calificar" en otra mascota | Tras recargar sigue en Jurado con su sesión y sus pendientes. **Limitación conocida:** el formulario de calificación no abre sin conexión (necesita la ficha y la rúbrica del servidor); el jurado debe abrir la ficha antes de perder la señal | ☐ |
 | 6 | Un jurado intenta corregir; admin desbloquea; jurado reenvía | 409 antes del desbloqueo; auditoría registrada | ☐ |
 | 7 | Admin resuelve un empate y publica | Pantalla en modo ranking muestra podio | ☐ |
 | 8 | Comentarista ve el ranking publicado | Podio y tabla | ☐ |

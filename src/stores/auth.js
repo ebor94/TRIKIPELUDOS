@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 import { api, trk, tokenStorage } from '@/services/api'
+import { idDelToken, perfilStorage } from '@/utils/sesionLocal'
+
+// Sin respuesta del servidor (red caída, timeout): no hay status HTTP.
+const sinConexion = (e) => !(e && Number.isInteger(e.status) && e.status > 0)
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ token: tokenStorage.leer(), usuario: null }),
@@ -20,6 +24,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = token
       this.usuario = usuario
       tokenStorage.guardar(token)
+      perfilStorage.guardar(usuario)
     },
     async loginPin(usuarioId, pin) {
       const { data } = await trk.post('/auth/pin', { usuario_id: usuarioId, pin })
@@ -39,9 +44,18 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await trk.get('/auth/yo')
         this.usuario = data
+        perfilStorage.guardar(data)
         return data
       } catch (e) {
-        if (e.status === 401) this.logout()
+        if (e && e.status === 401) this.logout()
+        else if (sinConexion(e)) {
+          // Sin conexión: se conserva la sesión con el perfil guardado si es del mismo usuario del token (I5).
+          const cache = perfilStorage.leer()
+          if (cache && String(cache.id) === String(idDelToken(this.token))) {
+            this.usuario = cache
+            return cache
+          }
+        }
         throw e
       }
     },
@@ -49,6 +63,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.usuario = null
       tokenStorage.guardar(null)
+      perfilStorage.guardar(null)
     }
   }
 })
