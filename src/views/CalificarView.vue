@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -23,6 +23,7 @@ const error = ref('')
 const enviando = ref(false)
 const encolada = ref(false)
 let detenerSync = null
+let desmontado = false
 
 const total = computed(() => Object.values(valores.value).reduce((s, v) => s + (v ?? 0), 0))
 const completos = computed(() => rubrica.value && rubrica.value.criterios.every((c) => valores.value[c.id] !== null && valores.value[c.id] !== undefined))
@@ -53,17 +54,29 @@ async function enviar() {
     if (r.estado === 'ENVIADA') enviada.value = r.calificacion
     else if (r.estado === 'PENDIENTE') encolada.value = true
     else if (r.estado === 'RECHAZADA') error.value = mensajeDeError(r.error)
+  } catch (e) {
+    error.value = mensajeDeError(e)
   } finally { enviando.value = false }
 }
 
+// Si la cola se vacía (sincronizada) y la calificación ya llegó al servidor, recarga y muestra la bloqueada.
+watch(() => store.pendientes[route.params.id], async (nuevo, previo) => {
+  if (!previo || nuevo || desmontado) return
+  encolada.value = false
+  await cargar()
+})
+
 onMounted(async () => {
-  // La carga de la pantalla no espera a la cola local (IndexedDB).
+  // La carga no espera a la cola local (IndexedDB) ni a la auto-sincronización.
   const carga = cargar()
-  await store.cargarPendientes(juradoId.value).catch(() => {})
   detenerSync = store.iniciarAutoSincronizacion(juradoId.value)
+  await store.cargarPendientes(juradoId.value).catch(() => {})
   await carga
 })
-onBeforeUnmount(() => detenerSync && detenerSync())
+onBeforeUnmount(() => {
+  desmontado = true
+  if (detenerSync) detenerSync()
+})
 </script>
 
 <template>

@@ -9,6 +9,7 @@ vi.mock('@/services/api', () => ({ api: {}, trk: { get: vi.fn(), put: vi.fn() },
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useCalificacionStore } from '@/stores/calificacion'
+import { mensajeDeError } from '@/utils/errores'
 import CalificarView from '@/views/CalificarView.vue'
 
 const RUBRICA = {
@@ -90,4 +91,55 @@ test('si ya la calificó, se muestra bloqueada sin controles', async () => {
   await flushPromises()
   expect(w.text()).toContain('77 / 100')
   expect(w.find('input[type="range"]').exists()).toBe(false)
+})
+
+test('al sincronizar la cola deja de decir pendiente y muestra la calificación enviada', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(async () => {})
+  s.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  s.enviar = vi.fn(async () => {
+    s.pendientes = { p1: { participanteId: 'p1' } }
+    return { estado: 'PENDIENTE' }
+  })
+  const w = mount(CalificarView)
+  await flushPromises()
+  await tocarTodos(w)
+  await w.get('[data-test="enviar"]').trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('Pendiente de sincronizar')
+
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/participantes/p1') return { data: { id: 'p1', mascota_nombre: 'Canela', categoria_id: 1, estado: 'EN_PASARELA', categoria: { nombre: 'Pequeños' } } }
+    if (url === '/rubricas/1') return { data: RUBRICA }
+    if (url === '/calificaciones/mias') return { data: [{ id: 9, participante_id: 'p1', total: 80, bloqueada: true }] }
+    throw new Error(url)
+  })
+  s.pendientes = {}
+  await flushPromises()
+  expect(w.text()).toContain('Calificación enviada')
+  expect(w.text()).not.toContain('Pendiente de sincronizar')
+})
+
+test('arranca la auto-sincronización antes de esperar la cola y la detiene si se desmonta antes', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(() => new Promise(() => {}))
+  const parar = vi.fn()
+  s.iniciarAutoSincronizacion = vi.fn(() => parar)
+  const w = mount(CalificarView)
+  expect(s.iniciarAutoSincronizacion).toHaveBeenCalledWith(7)
+  w.unmount()
+  expect(parar).toHaveBeenCalledTimes(1)
+})
+
+test('si enviar lanza un error inesperado se muestra en pantalla', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(async () => {})
+  s.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  s.enviar = vi.fn(async () => { throw new Error('boom') })
+  const w = mount(CalificarView)
+  await flushPromises()
+  await tocarTodos(w)
+  await w.get('[data-test="enviar"]').trigger('click')
+  await flushPromises()
+  expect(w.get('[role="alert"]').text()).toBe(mensajeDeError(new Error('boom')))
 })
