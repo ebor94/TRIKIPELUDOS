@@ -17,6 +17,7 @@ export const routes = [
       { path: '', component: () => import('@/views/admin/TableroView.vue') },
       { path: 'usuarios', component: () => import('@/views/admin/UsuariosView.vue') },
       { path: 'importar', component: () => import('@/views/admin/ImportarView.vue') },
+      { path: 'participantes', component: () => import('@/views/admin/ParticipantesView.vue') },
       { path: 'ranking', component: () => import('@/views/admin/RankingView.vue') }
     ]
   }
