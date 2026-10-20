@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, nextTick, onMounted } from 'vue'
 import { trk } from '@/services/api'
 import { useCategoriasStore } from '@/stores/categorias'
 import { mensajeDeError } from '@/utils/errores'
@@ -14,6 +14,7 @@ const editando = ref(null)
 const formulario = reactive({})
 const fusionando = ref(null)
 const destinoFusion = ref('')
+const mensajes = ref(null)
 
 const CAMPOS = [
   ['mascota_nombre', 'Mascota'], ['disfraz_nombre', 'Disfraz'], ['raza', 'Raza'], ['edad_texto', 'Edad'],
@@ -23,6 +24,14 @@ const CAMPOS = [
 const ANULABLES = ['responsable_documento', 'responsable_telefono', 'responsable_correo']
 const ESTADOS = ['INSCRITO', 'PRESENTE', 'EN_PASARELA', 'PRESENTADO', 'AUSENTE']
 const nombreCategoria = (id) => (categorias.porId(id) || {}).nombre || '—'
+
+// En móvil el mensaje queda arriba, lejos de la fila accionada: traerlo a la vista
+async function mostrar(tipo, texto) {
+  error.value = tipo === 'error' ? texto : ''
+  aviso.value = tipo === 'aviso' ? texto : ''
+  await nextTick()
+  mensajes.value?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+}
 
 async function cargar() {
   error.value = ''
@@ -49,35 +58,49 @@ async function guardarEdicion() {
       .map(([c, v]) => [c, v === '' && ANULABLES.includes(c) ? null : v])
   )
   if (!Object.keys(cambios).length) { editando.value = null; return }
+  error.value = ''
+  aviso.value = ''
   try {
     const { data } = await trk.patch(`/participantes/${editando.value.id}`, cambios)
     reemplazar(data.participante)
     editando.value = null
-    aviso.value = 'Cambios guardados'
-  } catch (e) { error.value = mensajeDeError(e) }
+    await mostrar('aviso', 'Cambios guardados')
+  } catch (e) { await mostrar('error', mensajeDeError(e)) }
 }
 
 async function confirmarCategoria(p, confirmar = false) {
   error.value = ''
+  aviso.value = ''
   try {
     const { data } = await trk.post(`/participantes/${p.id}/categoria/confirmar`, { confirmar })
     reemplazar(data)
-    aviso.value = `Categoría de ${p.mascota_nombre} actualizada`
+    await mostrar('aviso', `Categoría de ${p.mascota_nombre} actualizada`)
   } catch (e) {
     if (e.motivo === 'CONFIRMACION_REQUERIDA' && !confirmar && window.confirm(`${e.message}. ¿Continuar?`)) return confirmarCategoria(p, true)
-    error.value = mensajeDeError(e)
+    await mostrar('error', mensajeDeError(e))
   }
+}
+
+function abrirFusion(p) {
+  if (!fusionando.value || fusionando.value.id !== p.id) destinoFusion.value = ''
+  fusionando.value = p
+}
+
+function cancelarFusion() {
+  fusionando.value = null
+  destinoFusion.value = ''
 }
 
 async function fusionar() {
   error.value = ''
+  aviso.value = ''
   try {
     await trk.post(`/participantes/${fusionando.value.id}/fusionar`, { destino_id: destinoFusion.value })
-    aviso.value = `${fusionando.value.mascota_nombre} fusionado`
-    fusionando.value = null
-    destinoFusion.value = ''
+    const nombre = fusionando.value.mascota_nombre
+    cancelarFusion()
     await cargar()
-  } catch (e) { error.value = mensajeDeError(e) }
+    await mostrar('aviso', `${nombre} fusionado`)
+  } catch (e) { await mostrar('error', mensajeDeError(e)) }
 }
 
 onMounted(async () => {
@@ -95,8 +118,10 @@ onMounted(async () => {
       <select v-model="filtros.estado" class="campo"><option value="">Todos los estados</option><option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option></select>
       <button class="btn-secundario sm:col-span-4" type="submit">Filtrar</button>
     </form>
-    <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
-    <p v-if="aviso" class="rounded-xl bg-green-100 p-3 text-green-900" role="status">{{ aviso }}</p>
+    <div ref="mensajes" class="flex flex-col gap-2">
+      <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
+      <p v-if="aviso" class="rounded-xl bg-green-100 p-3 text-green-900" role="status">{{ aviso }}</p>
+    </div>
 
     <ul class="flex flex-col gap-2">
       <li v-for="p in lista" :key="p.id" class="tarjeta flex flex-col gap-2">
@@ -114,23 +139,25 @@ onMounted(async () => {
         <div class="flex flex-wrap gap-2">
           <button class="btn-claro" :data-test="`editar-${p.id}`" @click="editar(p)">Editar</button>
           <button v-if="p.categoria_propuesta_id" class="btn-primario" :data-test="`confirmar-categoria-${p.id}`" @click="confirmarCategoria(p)">Confirmar categoría</button>
-          <button class="btn-claro" :data-test="`fusionar-${p.id}`" @click="fusionando = p">Fusionar…</button>
+          <button class="btn-claro" :data-test="`fusionar-${p.id}`" @click="abrirFusion(p)">Fusionar…</button>
         </div>
 
         <form v-if="editando && editando.id === p.id" data-test="guardar-edicion" class="grid gap-2 sm:grid-cols-2" @submit.prevent="guardarEdicion">
           <label v-for="[campo, texto] in CAMPOS" :key="campo" class="flex flex-col gap-1 text-sm">{{ texto }}
             <input v-model="formulario[campo]" class="campo" :data-test="`campo-${campo}`" />
           </label>
-          <button class="btn-primario sm:col-span-2" type="submit">Guardar</button>
+          <button class="btn-primario" type="submit">Guardar</button>
+          <button class="btn-claro" type="button" data-test="cancelar-edicion" @click="editando = null">Cancelar</button>
         </form>
 
         <div v-if="fusionando && fusionando.id === p.id" class="flex flex-col gap-2 rounded-xl bg-morado-50 p-3">
           <p class="text-sm">Fusionar <strong>{{ p.mascota_nombre }}</strong> en (se conserva el destino):</p>
           <select v-model="destinoFusion" class="campo" data-test="destino-fusion">
             <option value="">Elige el registro destino</option>
-            <option v-for="o in lista.filter((x) => x.id !== p.id)" :key="o.id" :value="o.id">{{ o.mascota_nombre }} · {{ o.responsable_nombre }}</option>
+            <option v-for="o in lista.filter((x) => x.id !== p.id)" :key="o.id" :value="o.id">{{ o.mascota_nombre }} · {{ o.responsable_nombre }} · {{ o.responsable_documento || 'sin documento' }} · {{ nombreCategoria(o.categoria_id) }}</option>
           </select>
           <button class="btn-primario" data-test="confirmar-fusion" :disabled="!destinoFusion" @click="fusionar">Fusionar</button>
+          <button class="btn-claro" type="button" data-test="cancelar-fusion" @click="cancelarFusion">Cancelar</button>
         </div>
       </li>
     </ul>

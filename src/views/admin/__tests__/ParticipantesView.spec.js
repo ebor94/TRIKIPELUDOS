@@ -87,3 +87,41 @@ test('al vaciar documento, teléfono o correo se envía null y no cadena vacía'
     responsable_documento: null, responsable_telefono: null, responsable_correo: null, responsable_nombre: ''
   })
 })
+
+test('un aviso previo se limpia cuando la siguiente acción falla', async () => {
+  trk.patch.mockResolvedValue({ data: { participante: { ...thor, responsable_documento: '999' }, requiere_confirmacion: false } })
+  trk.post.mockRejectedValue({ status: 409, motivo: 'FUSION_CON_CHOQUE', message: 'Un mismo jurado calificó ambos registros', errors: [] })
+  const w = mount(ParticipantesView)
+  await flushPromises()
+  await w.get('[data-test="editar-t1"]').trigger('click')
+  await w.get('[data-test="campo-responsable_documento"]').setValue('999')
+  await w.get('[data-test="guardar-edicion"]').trigger('submit')
+  await flushPromises()
+  expect(w.text()).toContain('Cambios guardados')
+  await w.get('[data-test="fusionar-t1"]').trigger('click')
+  await w.get('[data-test="destino-fusion"]').setValue('t2')
+  await w.get('[data-test="confirmar-fusion"]').trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('Un mismo jurado calificó ambos registros')
+  expect(w.text()).not.toContain('Cambios guardados')
+})
+
+test('Cancelar cierra el formulario de edición', async () => {
+  const w = mount(ParticipantesView)
+  await flushPromises()
+  await w.get('[data-test="editar-t1"]').trigger('click')
+  expect(w.find('[data-test="guardar-edicion"]').exists()).toBe(true)
+  await w.get('[data-test="cancelar-edicion"]').trigger('click')
+  expect(w.find('[data-test="guardar-edicion"]').exists()).toBe(false)
+})
+
+test('Cancelar cierra la fusión y reinicia el destino', async () => {
+  const w = mount(ParticipantesView)
+  await flushPromises()
+  await w.get('[data-test="fusionar-t1"]').trigger('click')
+  await w.get('[data-test="destino-fusion"]').setValue('t2')
+  await w.get('[data-test="cancelar-fusion"]').trigger('click')
+  expect(w.find('[data-test="destino-fusion"]').exists()).toBe(false)
+  await w.get('[data-test="fusionar-t1"]').trigger('click')
+  expect(w.get('[data-test="destino-fusion"]').element.value).toBe('')
+})
