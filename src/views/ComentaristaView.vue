@@ -11,6 +11,7 @@ import BarraSuperior from '@/components/BarraSuperior.vue'
 import FichaMascota from '@/components/FichaMascota.vue'
 import FotoMascota from '@/components/FotoMascota.vue'
 import EstadoChip from '@/components/EstadoChip.vue'
+import PodioRanking from '@/components/PodioRanking.vue'
 
 const auth = useAuthStore()
 const evento = useEventoStore()
@@ -20,6 +21,9 @@ const cola = ref([])
 const indice = ref(0)
 const error = ref('')
 const llamando = ref(false)
+const rankingPublicado = ref(null)
+const mensajeRanking = ref('')
+const viendoRanking = ref(false)
 let recarga = null
 
 const actual = computed(() => cola.value[indice.value] || null)
@@ -42,6 +46,16 @@ function fijarCola(lista) {
   if (i >= 0) indice.value = i
 }
 const recargarPronto = () => { clearTimeout(recarga); recarga = setTimeout(cargarCola, 300) }
+
+async function verRanking() {
+  viendoRanking.value = !viendoRanking.value
+  if (!viendoRanking.value) return
+  rankingPublicado.value = null
+  mensajeRanking.value = ''
+  try {
+    rankingPublicado.value = (await trk.get(`/ranking/${categoriaId.value}`)).data
+  } catch (e) { mensajeRanking.value = mensajeDeError(e) }
+}
 
 function elegirCategoria(id) {
   categoriaId.value = id
@@ -104,7 +118,12 @@ onMounted(async () => {
     <BarraSuperior titulo="Comentarista" />
     <nav class="flex gap-1 overflow-x-auto bg-white px-2 py-1 shadow-sm">
       <button v-for="c in categorias.lista" :key="c.id" class="btn whitespace-nowrap" :class="c.id === categoriaId ? 'bg-calabaza-700 text-white' : 'text-morado-800'" @click="elegirCategoria(c.id)">{{ c.nombre }}</button>
+      <button class="btn whitespace-nowrap bg-morado-700 text-white" data-test="ver-ranking" @click="verRanking">🏆 Ranking</button>
     </nav>
+    <section v-if="viendoRanking" class="mx-auto max-w-5xl p-4">
+      <p v-if="mensajeRanking" class="tarjeta text-2xl">{{ mensajeRanking }}</p>
+      <div v-else-if="rankingPublicado" class="tarjeta"><PodioRanking :ranking="rankingPublicado" grande /></div>
+    </section>
     <main class="mx-auto grid max-w-5xl gap-4 p-4 md:grid-cols-[2fr_1fr]">
       <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800 md:col-span-2" role="alert">{{ error }}</p>
 

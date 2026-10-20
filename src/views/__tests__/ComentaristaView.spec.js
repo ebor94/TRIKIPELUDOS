@@ -101,3 +101,32 @@ test('subir envía el nuevo orden (▲)', async () => {
   await flushPromises()
   expect(trk.put).toHaveBeenCalledWith('/pasarela/orden', { categoria_id: 1, orden: ['b', 'a', 'c'] })
 })
+
+test('el comentarista ve el ranking publicado de la categoría (HU-4 CA2)', async () => {
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: CATS }
+    if (url === '/evento/estado') return { data: { modo_pantalla: 'PASARELA', en_pasarela: null, categoria_pantalla: null, ranking: null } }
+    if (url === '/ranking/1') return { data: { categoria: { nombre: 'Pequeños', puestos_premiados: 3 }, filas: [{ participante_id: 'a', mascota_nombre: 'Canela', puesto: 1, puntaje_final: 90, premiado: true, completa: true, participante: { id: 'a', mascota_nombre: 'Canela' } }] } }
+    return { data: cola }
+  })
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  await w.get('[data-test="ver-ranking"]').trigger('click')
+  await flushPromises()
+  expect(trk.get).toHaveBeenCalledWith('/ranking/1')
+  expect(w.get('[data-test="podio"]').text()).toContain('Canela')
+})
+
+test('si no está publicado lo indica', async () => {
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: CATS }
+    if (url === '/evento/estado') return { data: { modo_pantalla: 'PASARELA', en_pasarela: null, categoria_pantalla: null, ranking: null } }
+    if (url === '/ranking/1') throw { status: 404, motivo: 'RANKING_NO_PUBLICADO', message: 'El ranking de esta categoría aún no se ha publicado' }
+    return { data: cola }
+  })
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  await w.get('[data-test="ver-ranking"]').trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('aún no se ha publicado')
+})

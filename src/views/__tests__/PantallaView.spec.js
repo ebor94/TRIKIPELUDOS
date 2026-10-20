@@ -38,3 +38,14 @@ test('modo ranking sin contenido propio muestra el logo (no queda en blanco)', a
   await flushPromises()
   expect(w.find('[data-test="logo"]').exists()).toBe(true)
 })
+
+test('modo ranking: muestra el podio de la categoría publicada', async () => {
+  trk.get.mockResolvedValue({ data: {
+    modo_pantalla: 'RANKING', categoria_pantalla: { nombre: 'Pequeños' }, en_pasarela: null,
+    ranking: { categoria: { nombre: 'Pequeños', puestos_premiados: 3 }, filas: [{ participante_id: 'a', mascota_nombre: 'Canela', puesto: 1, puntaje_final: 91.5, premiado: true, completa: true, participante: { id: 'a', mascota_nombre: 'Canela' } }] }
+  } })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.get('[data-test="podio"]').text()).toContain('Canela')
+  expect(w.text()).toContain('91.5')
+})

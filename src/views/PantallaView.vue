@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useEventoStore } from '@/stores/evento'
 import { useTiempoReal } from '@/composables/useTiempoReal'
 import FotoMascota from '@/components/FotoMascota.vue'
+import PodioRanking from '@/components/PodioRanking.vue'
 
 const evento = useEventoStore()
 const logo = import.meta.env.VITE_LOGO_URL || `${import.meta.env.BASE_URL}logo-evento.svg`
@@ -39,6 +40,10 @@ useTiempoReal({
       <img v-else data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
     </section>
 
+    <section v-else-if="evento.modoPantalla === 'RANKING' && evento.ranking" class="mx-auto w-full max-w-6xl">
+      <h1 class="mb-6 text-center text-5xl font-extrabold">🏆 {{ evento.ranking.categoria.nombre }}</h1>
+      <PodioRanking :ranking="evento.ranking" grande />
+    </section>
     <section v-else class="flex flex-1 items-center justify-center">
       <img data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
     </section>
