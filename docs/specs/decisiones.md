@@ -132,3 +132,20 @@ Leyenda: ✅ coincide con §11/repo · ⚠️ desviación respecto a §11 · �
 3. Módulos válidos de `api_codigo`: `AUTH, USR, IMP, PAR, PAS, EVT, RUB, CAL, CAT, RNK, EXP` (§9.0).
 4. `trk_participantes.categoria_propuesta_id` (HU-5 CA4).
 5. Fusión con choque de jurado → se bloquea (HU-3 CA2).
+
+---
+
+## 4. Ajustes hechos durante el plan e implementación
+
+- **D3 (Sequelize):** los modelos se llaman `Trk*` (convención `R44*`/`Cym*` del repo) y su `Model.sync()` es un no-op, así el `sequelize.sync()` de Mantix nunca crea tablas `trk_*`; el orden de despliegue deja de ser un riesgo.
+- **D3:** no se creó pool `mysql2` propio; las consultas crudas usan `db.sequelize.query` (una sola conexión, menos piezas).
+- **D8:** se agregó entorno `test` a `src/config/database.js` y `jest.testPathIgnorePatterns` para separar las pruebas de integración (`*.int.test.js`, `npm run test:trk:int`).
+- **§9.1:** se agregó `TRK-CAT-005 GET /categorias` (selectores de importador, cabina y comentarista).
+- **Ranking:** el ranking en vivo del admin incluye calificaciones por jurado (para desbloquear); el snapshot publicado las omite.
+- **Búsqueda pública (rol sin datos completos):** solo coincide por nombre de mascota, para no servir de oráculo de datos del responsable (desviación de la spec).
+- **Validación estricta en PATCH de participantes (Joi):** el backend rechaza valores inválidos; el frontend envía `null` al vaciar documento/teléfono/correo.
+- **Node ≥ 16.9** por el uso de `Object.hasOwn`.
+- **Cola offline del jurado:** guarda de sesión — una calificación encolada solo se envía con la sesión del jurado que la creó; al cerrar sesión se reinicia el store.
+- **Publicar ranking** queda habilitado con empates sin resolver: el frontend avisa y el backend responde 409 si el empate impide publicar.
+- **Logs:** la línea de request registra la ruta sin query string y los errores 5xx sin `message`/`sql` (pueden contener documentos); helper `errorParaLog`.
+- **Respaldo:** los usuarios se filtran por `rol_id` de roles `TRK_*` (no por dominio de correo); carpeta y archivos con permisos 700/600.
