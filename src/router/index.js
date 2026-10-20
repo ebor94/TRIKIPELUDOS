@@ -10,7 +10,8 @@ export const routes = [
     meta: { permiso: 'administrar' },
     children: [
       { path: '', redirect: '/admin/usuarios' },
-      { path: 'usuarios', component: () => import('@/views/admin/UsuariosView.vue') }
+      { path: 'usuarios', component: () => import('@/views/admin/UsuariosView.vue') },
+      { path: 'importar', component: () => import('@/views/admin/ImportarView.vue') }
     ]
   }
 ]
