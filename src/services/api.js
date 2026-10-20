@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { CLAVE_TOKEN } from '@/services/sesion'
+
+export const CLAVE_TOKEN = 'trk_token'
 
 export const tokenStorage = {
   leer() {
@@ -25,6 +26,22 @@ export function normalizarError(error) {
   }
 }
 
+// Aviso de sesión invalidada (PIN regenerado, token vencido). Lo registra la app al arrancar (I2).
+let alExpirar = null
+export function alSesionExpirada(fn) {
+  alExpirar = fn
+}
+// Los 401 de las rutas de autenticación significan credenciales malas o perfil inválido (lo maneja el guard).
+const esRutaAuth = (url = '') => /^\/?auth\//.test(url)
+
+function avisarSiExpiro(e, err) {
+  if (err.status !== 401 || !alExpirar || esRutaAuth(e?.config?.url)) return
+  const actual = tokenStorage.leer()
+  const usado = e?.config?.headers?.Authorization
+  // Solo si el 401 es de la sesión vigente: un 401 tardío de un token ya reemplazado no cierra la sesión nueva.
+  if (actual && usado === `Bearer ${actual}`) alExpirar(err)
+}
+
 function crearCliente(baseURL) {
   const cliente = axios.create({ baseURL, timeout: 20000 })
   cliente.interceptors.request.use((config) => {
@@ -32,7 +49,14 @@ function crearCliente(baseURL) {
     if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   })
-  cliente.interceptors.response.use((r) => r.data, (e) => Promise.reject(normalizarError(e)))
+  cliente.interceptors.response.use(
+    (r) => r.data,
+    (e) => {
+      const err = normalizarError(e)
+      avisarSiExpiro(e, err)
+      return Promise.reject(err)
+    }
+  )
   return cliente
 }
 

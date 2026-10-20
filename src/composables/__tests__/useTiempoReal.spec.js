@@ -109,3 +109,17 @@ test('detener con socket conectado deja conectado en false', () => {
   rt.detener()
   expect(rt.conectado.value).toBe(false)
 })
+
+test('I2: un 401 en el polling no se traga: detiene el polling y avisa', async () => {
+  const socket = socketFalso()
+  const err = { status: 401, motivo: 'NO_AUTENTICADO' }
+  const sincronizar = vi.fn(async () => { throw err })
+  const alNoAutenticado = vi.fn()
+  const rt = useTiempoReal({ sincronizar, conectar: () => socket, automatico: false, alNoAutenticado })
+  rt.iniciar()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(alNoAutenticado).toHaveBeenCalledWith(err)
+  sincronizar.mockClear()
+  await vi.advanceTimersByTimeAsync(9000)
+  expect(sincronizar).not.toHaveBeenCalled()
+})

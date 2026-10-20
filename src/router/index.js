@@ -33,12 +33,20 @@ export function decidirNavegacion(to, auth) {
 
 const router = createRouter({ history: createWebHistory(import.meta.env.BASE_URL), routes })
 
-router.beforeEach(async (to) => {
-  const auth = useAuthStore()
+export async function guardia(to, auth) {
   if (auth.token && !auth.usuario) {
-    try { await auth.cargarPerfil() } catch { /* token inválido: cargarPerfil ya cerró sesión */ }
+    try {
+      await auth.cargarPerfil()
+    } catch (e) {
+      // 401: cargarPerfil ya cerró sesión; se avisa en /login que la sesión expiró (I2).
+      if (e && e.status === 401 && !(to.meta && to.meta.publica)) {
+        return { path: '/login', query: { redirect: to.fullPath, motivo: 'SESION_EXPIRADA' } }
+      }
+    }
   }
   return decidirNavegacion(to, auth)
-})
+}
+
+router.beforeEach((to) => guardia(to, useAuthStore()))
 
 export default router

@@ -20,6 +20,8 @@ const enviando = ref(false)
 
 const ETIQUETA_ROL = { TRK_JURADO: 'Jurado', TRK_CABINA: 'Cabina', TRK_COMENTARISTA: 'Comentarista' }
 const pinCompleto = computed(() => /^\d{6}$/.test(pin.value))
+const sesionExpirada = computed(() => route.query.motivo === 'SESION_EXPIRADA')
+const primero = (v) => String([].concat(v ?? '')[0] || '')
 
 onMounted(async () => {
   try {
@@ -35,7 +37,7 @@ async function entrar(accion) {
   enviando.value = true
   try {
     await accion()
-    router.push(route.query.redirect || auth.rutaInicio)
+    router.push(primero(route.query.redirect) || auth.rutaInicio)
   } catch (e) {
     error.value = mensajeDeError(e)
   } finally {
@@ -59,6 +61,9 @@ const entrarComoAdmin = () => entrar(() => auth.loginAdmin(email.value, password
       <button class="btn" :class="modo === 'admin' ? 'bg-morado-700 text-white' : 'bg-white text-morado-800'" role="tab" @click="modo = 'admin'">Administrador</button>
     </div>
 
+    <p v-if="sesionExpirada" data-test="sesion-expirada" class="rounded-xl bg-calabaza-100 p-3 text-calabaza-900" role="status">
+      Tu sesión expiró, vuelve a ingresar. Si tenías calificaciones pendientes en este celular, se enviarán al entrar con tu PIN.
+    </p>
     <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
 
     <form v-if="modo === 'equipo'" class="flex flex-col gap-4" data-test="entrar-pin" @submit.prevent="entrarConPin">

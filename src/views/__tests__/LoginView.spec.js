@@ -3,7 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
 const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => ({ query: {} }) }))
+const ruta = vi.hoisted(() => ({ query: {} }))
+vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace: push }), useRoute: () => ruta }))
 vi.mock('@/services/api', () => ({
   api: { post: vi.fn() },
   trk: { get: vi.fn(), post: vi.fn() },
@@ -16,6 +17,7 @@ import LoginView from '@/views/LoginView.vue'
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  ruta.query = {}
   trk.get.mockResolvedValue({ data: [{ id: 3, nombre: 'Jurado Ana', rol: 'TRK_JURADO' }, { id: 4, nombre: 'Cabina', rol: 'TRK_CABINA' }] })
 })
 
@@ -41,4 +43,23 @@ test('muestra el error del servidor', async () => {
   await w.get('[data-test="entrar-pin"]').trigger('submit')
   await flushPromises()
   expect(w.text()).toContain('Usuario o PIN incorrecto')
+})
+
+test('I2: tras una sesión expirada muestra el aviso visible', async () => {
+  ruta.query = { motivo: 'SESION_EXPIRADA', redirect: '/jurado' }
+  const w = mount(LoginView)
+  await flushPromises()
+  expect(w.get('[data-test="sesion-expirada"]').text()).toContain('Tu sesión expiró, vuelve a ingresar')
+})
+
+test('redirect en forma de arreglo se normaliza a texto', async () => {
+  ruta.query = { redirect: ['/jurado/calificar/p1', '/x'] }
+  trk.post.mockResolvedValue({ data: { token: 't', usuario: { id: 3, nombre: 'Jurado Ana', rol: 'TRK_JURADO', permisos: { calificar: true } } } })
+  const w = mount(LoginView)
+  await flushPromises()
+  await w.get('[data-test="usuario-3"]').trigger('click')
+  await w.get('[data-test="pin"]').setValue('123456')
+  await w.get('[data-test="entrar-pin"]').trigger('submit')
+  await flushPromises()
+  expect(push).toHaveBeenCalledWith('/jurado/calificar/p1')
 })

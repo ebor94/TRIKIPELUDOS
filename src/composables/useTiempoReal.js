@@ -2,7 +2,7 @@ import { ref, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
 import { conectarSocket } from '@/services/socket'
 
 // Socket.IO con respaldo de polling REST (RNF-2): mientras no haya socket, llama a `sincronizar` cada intervaloMs.
-export function useTiempoReal({ token = null, eventos = {}, sincronizar = null, intervaloMs = 3000, conectar = conectarSocket, automatico = true } = {}) {
+export function useTiempoReal({ token = null, eventos = {}, sincronizar = null, intervaloMs = 3000, conectar = conectarSocket, automatico = true, alNoAutenticado = () => {} } = {}) {
   const conectado = ref(false)
   let socket = null
   let temporizador = null
@@ -11,7 +11,15 @@ export function useTiempoReal({ token = null, eventos = {}, sincronizar = null, 
   const correr = async () => {
     if (!sincronizar || enVuelo) return
     enVuelo = true
-    try { await sincronizar() } catch {} finally { enVuelo = false }
+    try {
+      await sincronizar()
+    } catch (e) {
+      // Los fallos de red se reintentan en el siguiente tick; un 401 no: la sesión ya no sirve (I2).
+      if (e && e.status === 401) {
+        detener()
+        alNoAutenticado(e)
+      }
+    } finally { enVuelo = false }
   }
   const iniciarPolling = () => { if (!temporizador) temporizador = setInterval(correr, intervaloMs) }
   const detenerPolling = () => { clearInterval(temporizador); temporizador = null }
