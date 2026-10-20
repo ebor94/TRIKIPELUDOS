@@ -143,3 +143,38 @@ test('si enviar lanza un error inesperado se muestra en pantalla', async () => {
   await flushPromises()
   expect(w.get('[role="alert"]').text()).toBe(mensajeDeError(new Error('boom')))
 })
+
+test('si la cola pendiente se vacía sin que el servidor la tenga, conserva los puntajes y avisa del rechazo', async () => {
+  const s = useCalificacionStore()
+  s.cargarPendientes = vi.fn(async () => {})
+  s.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  s.enviar = vi.fn(async () => {
+    s.pendientes = { p1: { participanteId: 'p1' } }
+    return { estado: 'PENDIENTE' }
+  })
+  const w = mount(CalificarView)
+  await flushPromises()
+  await tocarTodos(w)
+  await w.get('[data-test="enviar"]').trigger('click')
+  await flushPromises()
+  expect(w.text()).toContain('Pendiente de sincronizar')
+
+  s.pendientes = {}
+  await flushPromises()
+  expect(w.get('[role="alert"]').text()).toBe('La calificación pendiente no pudo registrarse; revisa los puntajes y vuelve a enviar.')
+  expect(w.get('[data-test="total"]').text()).toBe('80 / 100')
+  expect(w.findAll('input[type="range"]').map((r) => r.element.value)).toEqual(['30', '25', '15', '10'])
+})
+
+test('si el servidor rechaza la calificación al enviar, conserva los puntajes y muestra el motivo', async () => {
+  const s = useCalificacionStore()
+  s.enviar = vi.fn(async () => ({ estado: 'RECHAZADA', error: { message: 'Error', errors: [{ mensaje: 'La categoría ya no admite calificaciones' }] } }))
+  const w = mount(CalificarView)
+  await flushPromises()
+  await tocarTodos(w)
+  await w.get('[data-test="enviar"]').trigger('click')
+  await flushPromises()
+  expect(w.get('[role="alert"]').text()).toBe('La categoría ya no admite calificaciones')
+  expect(w.get('[data-test="total"]').text()).toBe('80 / 100')
+  expect(w.findAll('input[type="range"]').map((r) => r.element.value)).toEqual(['30', '25', '15', '10'])
+})

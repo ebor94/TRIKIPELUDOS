@@ -29,7 +29,7 @@ const total = computed(() => Object.values(valores.value).reduce((s, v) => s + (
 const completos = computed(() => rubrica.value && rubrica.value.criterios.every((c) => valores.value[c.id] !== null && valores.value[c.id] !== undefined))
 const pendiente = computed(() => encolada.value || Boolean(store.pendientes[route.params.id]))
 
-async function cargar() {
+async function cargar({ conservar = false } = {}) {
   try {
     participante.value = (await trk.get(`/participantes/${route.params.id}`)).data
     const [rub, mias] = await Promise.all([
@@ -37,7 +37,8 @@ async function cargar() {
       trk.get('/calificaciones/mias')
     ])
     rubrica.value = rub.data
-    valores.value = Object.fromEntries(rub.data.criterios.map((c) => [c.id, null]))
+    const previos = conservar ? valores.value : {}
+    valores.value = Object.fromEntries(rub.data.criterios.map((c) => [c.id, previos[c.id] ?? null]))
     const previa = mias.data.find((c) => c.participante_id === route.params.id && c.bloqueada)
     if (previa) enviada.value = previa
   } catch (e) { error.value = mensajeDeError(e) }
@@ -59,11 +60,15 @@ async function enviar() {
   } finally { enviando.value = false }
 }
 
-// Si la cola se vacía (sincronizada) y la calificación ya llegó al servidor, recarga y muestra la bloqueada.
+// Si la cola se vacía, recarga conservando los puntajes. Si el servidor no tiene la calificación
+// (fue rechazada), el jurado ve el aviso y puede corregir y reenviar.
 watch(() => store.pendientes[route.params.id], async (nuevo, previo) => {
   if (!previo || nuevo || desmontado) return
   encolada.value = false
-  await cargar()
+  await cargar({ conservar: true })
+  if (!enviada.value && !error.value) {
+    error.value = 'La calificación pendiente no pudo registrarse; revisa los puntajes y vuelve a enviar.'
+  }
 })
 
 onMounted(async () => {
