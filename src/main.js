@@ -4,6 +4,7 @@ import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 import App from './App.vue'
 import router from './router'
+import { vigilarTokenCompartido } from './services/sesion'
 import './style.css'
 
 createApp(App)
@@ -11,3 +12,5 @@ createApp(App)
   .use(router)
   .use(Toast, { position: 'top-center', timeout: 3500 })
   .mount('#app')
+
+vigilarTokenCompartido()

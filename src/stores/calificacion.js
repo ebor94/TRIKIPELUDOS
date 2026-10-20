@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { trk } from '@/services/api'
+import { trk, tokenStorage } from '@/services/api'
 import * as cola from '@/utils/colaOffline'
 import { useAuthStore } from '@/stores/auth'
+import { idDelToken } from '@/utils/sesionLocal'
 
 // Solo es definitivo un 4xx (distinto de 401/408/429) con status entero; todo lo demás se reintenta.
 const definitivo = (e) => {
@@ -20,7 +21,10 @@ const enSerie = (clave, tarea) => {
   return actual
 }
 
-const sesionId = () => useAuthStore().usuario?.id
+// La sesión vale para un jurado solo si coincide el usuario de esta pestaña Y el id dentro del token que
+// realmente se enviará (localStorage es compartido entre pestañas: otra pudo entrar como otro jurado).
+const esSesionDe = (juradoId) =>
+  String(useAuthStore().usuario?.id) === String(juradoId) && String(idDelToken(tokenStorage.leer())) === String(juradoId)
 
 export const useCalificacionStore = defineStore('calificacion', {
   state: () => ({ pendientes: {}, sincronizando: false }),
@@ -48,7 +52,7 @@ export const useCalificacionStore = defineStore('calificacion', {
       return enSerie(`${juradoId}:${participanteId}`, () => this._intentar(juradoId, participanteId))
     },
     async _intentar(juradoId, participanteId) {
-      if (String(sesionId()) !== String(juradoId)) return { estado: 'PENDIENTE' }
+      if (!esSesionDe(juradoId)) return { estado: 'PENDIENTE' }
       const item = await cola.obtener(juradoId, participanteId)
       if (!item) {
         this.olvidar(participanteId)
@@ -73,7 +77,7 @@ export const useCalificacionStore = defineStore('calificacion', {
     },
     async sincronizar(juradoId) {
       if (this.sincronizando) return
-      if (String(sesionId()) !== String(juradoId)) return
+      if (!esSesionDe(juradoId)) return
       this.sincronizando = true
       try {
         await this.cargarPendientes(juradoId)

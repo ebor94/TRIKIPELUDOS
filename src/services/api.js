@@ -1,6 +1,5 @@
 import axios from 'axios'
-
-const CLAVE_TOKEN = 'trk_token'
+import { CLAVE_TOKEN } from '@/services/sesion'
 
 export const tokenStorage = {
   leer() {

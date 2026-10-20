@@ -2,7 +2,10 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { clear, createStore } from 'idb-keyval'
 
-vi.mock('@/services/api', () => ({ api: {}, trk: { put: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
+const b64url = (o) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const jwtDe = (id) => `h.${b64url({ id, scope: 'trk' })}.f`
+const tokenActual = vi.hoisted(() => ({ valor: null }))
+vi.mock('@/services/api', () => ({ api: {}, trk: { put: vi.fn() }, tokenStorage: { leer: () => tokenActual.valor, guardar: () => {} } }))
 
 vi.mock('@/utils/colaOffline', async (importOriginal) => {
   const real = await importOriginal()
@@ -38,6 +41,7 @@ const PUNTAJES = [{ criterio_id: 1, puntaje: 10 }]
 beforeEach(async () => {
   setActivePinia(createPinia())
   useAuthStore().usuario = { id: 7 }
+  tokenActual.valor = jwtDe(7)
   vi.clearAllMocks()
   await clear(createStore('trikipeludos', 'cola_calificaciones'))
 })
@@ -219,4 +223,29 @@ test('intentar sin item en la cola limpia pendientes en memoria', async () => {
   const r = await s.intentar(7, 'p1')
   expect(r.estado).toBe('ENVIADA')
   expect(s.pendientes).toEqual({})
+})
+
+test('I1: no envía si el token que se enviaría (localStorage compartido) es de otro jurado', async () => {
+  trk.put.mockRejectedValue({ status: 0 })
+  const s = useCalificacionStore()
+  await s.enviar(7, 'p1', PUNTAJES)
+  trk.put.mockClear()
+  // Otra pestaña entró como el jurado 8: el token compartido cambió, pero esta pestaña sigue creyendo ser el 7.
+  tokenActual.valor = jwtDe(8)
+  await s.sincronizar(7)
+  expect((await s.intentar(7, 'p1')).estado).toBe('PENDIENTE')
+  expect(trk.put).not.toHaveBeenCalled()
+  expect(await cola.listar(7)).toHaveLength(1)
+})
+
+test('I1: sin token o con token ilegible no envía', async () => {
+  trk.put.mockRejectedValue({ status: 0 })
+  const s = useCalificacionStore()
+  await s.enviar(7, 'p1', PUNTAJES)
+  trk.put.mockClear()
+  tokenActual.valor = null
+  expect((await s.intentar(7, 'p1')).estado).toBe('PENDIENTE')
+  tokenActual.valor = 'basura'
+  expect((await s.intentar(7, 'p1')).estado).toBe('PENDIENTE')
+  expect(trk.put).not.toHaveBeenCalled()
 })
