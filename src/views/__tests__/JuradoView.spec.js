@@ -46,3 +46,51 @@ test('galería con insignias Calificada / Por sincronizar / Pendiente y mascotas
   expect(w.get('[data-test="insignia-t"]').text()).toBe('Pendiente')
   expect(w.get('[data-test="insignia-r"]').text()).toBe('Aún no sale')
 })
+
+test('al sincronizar la cola (sale de pendientes) recarga las calificadas y la insignia pasa a Calificada', async () => {
+  const cola = useCalificacionStore()
+  cola.cargarPendientes = vi.fn(async () => {})
+  cola.iniciarAutoSincronizacion = vi.fn(() => () => {})
+  cola.pendientes = { l: { participanteId: 'l' } }
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/evento/estado') return { data: { modo_pantalla: 'PASARELA', en_pasarela: toby, categoria_pantalla: null, ranking: null } }
+    if (url === '/calificaciones/mias') return { data: [] }
+    return { data: [toby, kira, luna, rex] }
+  })
+  const w = mount(JuradoView)
+  await flushPromises()
+  expect(w.get('[data-test="insignia-l"]').text()).toBe('Por sincronizar')
+
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/evento/estado') return { data: { modo_pantalla: 'PASARELA', en_pasarela: toby, categoria_pantalla: null, ranking: null } }
+    if (url === '/calificaciones/mias') return { data: [{ participante_id: 'l', total: 80, bloqueada: true }] }
+    return { data: [toby, kira, luna, rex] }
+  })
+  cola.pendientes = {}
+  await flushPromises()
+  expect(w.get('[data-test="insignia-l"]').text()).toBe('Calificada')
+})
+
+test('arranca la auto-sincronización antes de leer la cola local y la detiene al desmontar aunque aún no haya respondido', async () => {
+  const cola = useCalificacionStore()
+  const detener = vi.fn()
+  cola.iniciarAutoSincronizacion = vi.fn(() => detener)
+  cola.cargarPendientes = vi.fn(() => new Promise(() => {}))
+  const w = mount(JuradoView)
+  await flushPromises()
+  expect(cola.iniciarAutoSincronizacion).toHaveBeenCalledWith(7)
+  w.unmount()
+  expect(detener).toHaveBeenCalledTimes(1)
+})
+
+test('un error al leer la cola local no impide la auto-sincronización', async () => {
+  const cola = useCalificacionStore()
+  const detener = vi.fn()
+  cola.iniciarAutoSincronizacion = vi.fn(() => detener)
+  cola.cargarPendientes = vi.fn(async () => { throw new Error('IndexedDB bloqueada') })
+  const w = mount(JuradoView)
+  await flushPromises()
+  expect(cola.iniciarAutoSincronizacion).toHaveBeenCalledWith(7)
+  w.unmount()
+  expect(detener).toHaveBeenCalledTimes(1)
+})

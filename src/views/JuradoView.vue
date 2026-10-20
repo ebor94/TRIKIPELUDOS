@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -48,9 +48,19 @@ useTiempoReal({
   }
 })
 
+// Cuando la cola sincroniza (una entrada sale de pendientes) recarga "mias" para que la insignia refleje la calificación.
+watch(
+  () => Object.keys(cola.pendientes),
+  (ahora, antes) => {
+    if (antes.some((pid) => !ahora.includes(pid))) cargar()
+  }
+)
+
 onMounted(async () => {
-  await cola.cargarPendientes(auth.usuario && auth.usuario.id)
   detenerSync = cola.iniciarAutoSincronizacion(auth.usuario && auth.usuario.id)
+  try {
+    await cola.cargarPendientes(auth.usuario && auth.usuario.id)
+  } catch (e) { error.value = mensajeDeError(e) }
 })
 onBeforeUnmount(() => detenerSync && detenerSync())
 </script>
