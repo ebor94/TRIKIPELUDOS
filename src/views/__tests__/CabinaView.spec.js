@@ -101,3 +101,102 @@ test('alta de último minuto (CA6)', async () => {
   expect(trk.post).toHaveBeenCalledWith('/participantes', { responsable_nombre: 'Nora Díaz', responsable_telefono: '3009998877', mascota_nombre: 'Pelusa', especie: 'GATO', categoria_id: 3 })
   expect(w.text()).toContain('Pelusa')
 })
+
+const rex = { ...canela, id: 'p2', mascota_nombre: 'Rex', disfraz_nombre: '' }
+
+function diferido() {
+  let resolver
+  const promesa = new Promise((r) => { resolver = r })
+  return { promesa, resolver }
+}
+
+async function elegirFoto(w, selector = '[data-test="input-camara"]') {
+  const input = w.get(selector)
+  Object.defineProperty(input.element, 'files', { value: [new File(['raw'], 'f.jpg', { type: 'image/jpeg' })], configurable: true })
+  await input.trigger('change')
+}
+
+test('la foto se sube al participante original aunque se abra otro durante la compresión', async () => {
+  trk.get.mockImplementation(async (url) => (url === '/categorias' ? { data: CATEGORIAS } : { data: [canela, rex] }))
+  const d = diferido()
+  comprimirImagen.mockImplementationOnce(() => d.promesa)
+  trk.post.mockResolvedValue({ data: { ...canela, estado: 'PRESENTE', foto_url: '/x.jpg' } })
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  await elegirFoto(w)
+  await w.get('[data-test="participante-p2"]').trigger('click')
+  await flushPromises()
+  d.resolver(new Blob(['jpg'], { type: 'image/jpeg' }))
+  await flushPromises()
+  expect(trk.post.mock.calls[0][0]).toBe('/participantes/p1/foto')
+  expect(w.get('section h2').text()).toBe('Rex')
+})
+
+test('si falla la subida permite reintentar sin recomprimir', async () => {
+  trk.post
+    .mockRejectedValueOnce({ status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor' })
+    .mockResolvedValueOnce({ data: { ...canela, estado: 'PRESENTE', foto_url: '/x.jpg' } })
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  await elegirFoto(w)
+  await flushPromises()
+  const boton = w.get('[data-test="reintentar"]')
+  expect(boton.text()).toContain('Reintentar subida')
+  await boton.trigger('click')
+  await flushPromises()
+  expect(trk.post).toHaveBeenCalledTimes(2)
+  expect(trk.post.mock.calls[1][0]).toBe('/participantes/p1/foto')
+  expect(comprimirImagen).toHaveBeenCalledTimes(1)
+  expect(w.text()).toContain('Presente')
+  expect(w.find('[data-test="reintentar"]').exists()).toBe(false)
+})
+
+test('los inputs de foto se deshabilitan mientras sube', async () => {
+  const d = diferido()
+  trk.post.mockImplementation(() => d.promesa)
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  await elegirFoto(w)
+  await flushPromises()
+  expect(w.get('[data-test="input-camara"]').attributes('disabled')).toBeDefined()
+  expect(w.get('[data-test="input-galeria"]').attributes('disabled')).toBeDefined()
+  d.resolver({ data: { ...canela, estado: 'PRESENTE' } })
+  await flushPromises()
+  expect(w.get('[data-test="input-camara"]').attributes('disabled')).toBeUndefined()
+})
+
+test('una búsqueda vieja que responde tarde no pisa a la última', async () => {
+  const lenta = diferido()
+  let n = 0
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/categorias') return { data: CATEGORIAS }
+    n++
+    return n === 1 ? lenta.promesa : { data: [rex] }
+  })
+  const w = mount(CabinaView)
+  await flushPromises()
+  await w.get('[data-test="buscar"]').setValue('ca')
+  vi.advanceTimersByTime(350)
+  await w.get('[data-test="buscar"]').setValue('rex')
+  vi.advanceTimersByTime(350)
+  await flushPromises()
+  lenta.resolver({ data: [canela] })
+  await flushPromises()
+  expect(w.text()).toContain('Rex')
+  expect(w.text()).not.toContain('Canela')
+})
+
+test('marcar como ausente actualiza el estado', async () => {
+  trk.patch.mockResolvedValue({ data: { ...canela, estado: 'AUSENTE' } })
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  const boton = w.findAll('button').find((b) => b.text() === 'Marcar como ausente')
+  await boton.trigger('click')
+  await flushPromises()
+  expect(trk.patch).toHaveBeenCalledWith('/participantes/p1/estado', { estado: 'AUSENTE' })
+  expect(w.text()).toContain('Ausente')
+})

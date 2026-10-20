@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { trk } from '@/services/api'
 import { comprimirImagen } from '@/utils/imagen'
 import { mensajeDeError } from '@/utils/errores'
@@ -18,14 +18,19 @@ const aviso = ref('')
 const error = ref('')
 const mostrandoAlta = ref(false)
 const alta = reactive({ responsable_nombre: '', responsable_telefono: '', mascota_nombre: '', especie: 'PERRO', categoria_id: null })
+const pendiente = ref(null) // { id, blob } tras un POST fallido
+const subiendo = computed(() => progreso.value !== null && progreso.value < 100)
 let espera = null
+let ultimaBusqueda = 0
 
 async function buscar() {
   error.value = ''
+  const mia = ++ultimaBusqueda
   try {
     const params = texto.value.trim() ? { q: texto.value.trim() } : {}
-    resultados.value = (await trk.get('/participantes', { params })).data
-  } catch (e) { error.value = mensajeDeError(e) }
+    const { data } = await trk.get('/participantes', { params })
+    if (mia === ultimaBusqueda) resultados.value = data
+  } catch (e) { if (mia === ultimaBusqueda) error.value = mensajeDeError(e) }
 }
 
 function alEscribir() {
@@ -39,34 +44,56 @@ function abrir(p) {
   datos.categoria_id = p.categoria_id
   aviso.value = ''
   progreso.value = null
+  pendiente.value = null
 }
 
-function reemplazar(p) {
-  actual.value = p
+function reemplazar(p, actualizarFicha = true) {
+  if (actualizarFicha) actual.value = p
   const i = resultados.value.findIndex((r) => r.id === p.id)
   if (i >= 0) resultados.value[i] = p
   else resultados.value.unshift(p)
 }
 
-async function subirFoto(evento) {
-  const archivo = evento.target.files && evento.target.files[0]
-  evento.target.value = ''
-  if (!archivo || !actual.value) return
+async function enviarFoto(id, blob) {
   error.value = ''
   progreso.value = 0
+  pendiente.value = null
   try {
-    const blob = await comprimirImagen(archivo)
     const form = new FormData()
     form.append('foto', blob, 'foto.jpg')
-    const { data } = await trk.post(`/participantes/${actual.value.id}/foto`, form, {
+    const { data } = await trk.post(`/participantes/${id}/foto`, form, {
       onUploadProgress: (e) => { progreso.value = e.total ? Math.round((e.loaded / e.total) * 100) : null }
     })
-    reemplazar(data)
+    reemplazar(data, !!actual.value && actual.value.id === id)
     progreso.value = 100
   } catch (e) {
     error.value = mensajeDeError(e)
     progreso.value = null
+    pendiente.value = { id, blob }
   }
+}
+
+async function subirFoto(evento) {
+  const archivo = evento.target.files && evento.target.files[0]
+  evento.target.value = ''
+  if (!archivo || !actual.value || subiendo.value) return
+  const id = actual.value.id
+  error.value = ''
+  progreso.value = 0
+  pendiente.value = null
+  let blob
+  try {
+    blob = await comprimirImagen(archivo)
+  } catch (e) {
+    error.value = mensajeDeError(e)
+    progreso.value = null
+    return
+  }
+  await enviarFoto(id, blob)
+}
+
+function reintentar() {
+  if (pendiente.value && !subiendo.value) enviarFoto(pendiente.value.id, pendiente.value.blob)
 }
 
 async function guardarDatos() {
@@ -141,16 +168,17 @@ onBeforeUnmount(() => clearTimeout(espera))
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label class="btn-primario min-h-[56px] text-lg">
             📷 {{ actual.foto_url ? 'Repetir foto' : 'Tomar foto' }}
-            <input data-test="input-camara" class="sr-only" type="file" accept="image/*" capture="environment" @change="subirFoto" />
+            <input data-test="input-camara" class="sr-only" type="file" accept="image/*" capture="environment" :disabled="subiendo" @change="subirFoto" />
           </label>
           <label class="btn-claro min-h-[56px]">
             🖼️ Elegir de galería
-            <input data-test="input-galeria" class="sr-only" type="file" accept="image/*" @change="subirFoto" />
+            <input data-test="input-galeria" class="sr-only" type="file" accept="image/*" :disabled="subiendo" @change="subirFoto" />
           </label>
         </div>
         <div v-if="progreso !== null" class="h-3 w-full overflow-hidden rounded-full bg-morado-100" role="progressbar" :aria-valuenow="progreso">
           <div class="h-full bg-calabaza-600 transition-all" :style="{ width: `${progreso}%` }" />
         </div>
+        <button v-if="pendiente && pendiente.id === actual.id" data-test="reintentar" class="btn-primario" @click="reintentar">Reintentar subida</button>
         <span v-if="progreso === 100" data-test="repetir" class="text-sm text-green-800">Foto guardada. Puedes repetirla si no quedó bien.</span>
 
         <form data-test="guardar-datos" class="flex flex-col gap-2" @submit.prevent="guardarDatos">
