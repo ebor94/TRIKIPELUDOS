@@ -5,6 +5,7 @@ export const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } },
   { path: '/cabina', component: () => import('@/views/CabinaView.vue'), meta: { permiso: 'cabina' } },
+  { path: '/comentarista', component: () => import('@/views/ComentaristaView.vue'), meta: { permiso: 'pasarela' } },
   {
     path: '/admin',
     component: () => import('@/views/admin/AdminLayout.vue'),
