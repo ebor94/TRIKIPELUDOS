@@ -7,11 +7,17 @@ export function useTiempoReal({ token = null, eventos = {}, sincronizar = null, 
   let socket = null
   let temporizador = null
 
-  const correr = () => { if (sincronizar) Promise.resolve(sincronizar()).catch(() => {}) }
+  let enVuelo = false
+  const correr = async () => {
+    if (!sincronizar || enVuelo) return
+    enVuelo = true
+    try { await sincronizar() } catch {} finally { enVuelo = false }
+  }
   const iniciarPolling = () => { if (!temporizador) temporizador = setInterval(correr, intervaloMs) }
   const detenerPolling = () => { clearInterval(temporizador); temporizador = null }
 
   function iniciar() {
+    if (socket) return
     socket = conectar(token)
     socket.on('connect', () => { conectado.value = true; detenerPolling(); correr() })
     socket.on('disconnect', () => { conectado.value = false; iniciarPolling() })
@@ -28,6 +34,7 @@ export function useTiempoReal({ token = null, eventos = {}, sincronizar = null, 
       socket.disconnect()
       socket = null
     }
+    conectado.value = false
   }
 
   if (automatico && getCurrentInstance()) {
