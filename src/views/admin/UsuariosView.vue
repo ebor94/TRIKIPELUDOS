@@ -15,19 +15,23 @@ const nombre = ref('')
 const rol = ref('TRK_JURADO')
 const pinMostrado = ref(null)
 const error = ref('')
+const creando = ref(false)
 
 async function cargar() {
   try { usuarios.value = (await trk.get('/usuarios')).data } catch (e) { error.value = mensajeDeError(e) }
 }
 
+// Un doble toque crearía un jurado activo duplicado y dejaría todas las mascotas Incompletas en el ranking.
 async function crear() {
+  if (creando.value) return
+  creando.value = true
   error.value = ''
   try {
     const { data } = await trk.post('/usuarios', { nombre: nombre.value, rol: rol.value })
     usuarios.value.push(data.usuario)
     pinMostrado.value = { nombre: data.usuario.nombre, pin: data.pin }
     nombre.value = ''
-  } catch (e) { error.value = mensajeDeError(e) }
+  } catch (e) { error.value = mensajeDeError(e) } finally { creando.value = false }
 }
 
 async function regenerar(u) {
@@ -68,7 +72,7 @@ onMounted(cargar)
           <option v-for="r in ROLES" :key="r.valor" :value="r.valor">{{ r.texto }}</option>
         </select>
       </label>
-      <button class="btn-primario" type="submit">Crear</button>
+      <button class="btn-primario" type="submit" :disabled="creando">{{ creando ? 'Creando…' : 'Crear' }}</button>
     </form>
 
     <ul class="flex flex-col gap-2">

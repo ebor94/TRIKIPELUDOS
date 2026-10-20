@@ -58,3 +58,18 @@ test('activar/desactivar', async () => {
   expect(trk.patch).toHaveBeenCalledWith('/usuarios/1', { activo: false })
   expect(w.text()).toContain('Inactivo')
 })
+
+test('doble toque en Crear no crea dos usuarios: el botón se deshabilita mientras la petición está en curso', async () => {
+  let soltar
+  trk.post.mockImplementation(() => new Promise((res) => { soltar = () => res({ data: { usuario: { id: 2, nombre: 'Jurado Beto', rol: 'TRK_JURADO', activo: true }, pin: '482913' } }) }))
+  const w = mount(UsuariosView)
+  await flushPromises()
+  await w.get('[data-test="nombre"]').setValue('Jurado Beto')
+  await w.get('[data-test="crear"]').trigger('submit')
+  await w.get('[data-test="crear"]').trigger('submit')
+  expect(trk.post).toHaveBeenCalledTimes(1)
+  expect(w.get('[data-test="crear"] button[type="submit"]').attributes('disabled')).toBeDefined()
+  soltar()
+  await flushPromises()
+  expect(w.get('[data-test="crear"] button[type="submit"]').attributes('disabled')).toBeUndefined()
+})
