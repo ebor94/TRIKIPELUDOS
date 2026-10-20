@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCalificacionStore } from '@/stores/calificacion'
 
-defineProps({ titulo: { type: String, required: true } })
+// enlaceAdmin: el administrador que usa Cabina o Comentarista puede volver al panel; dentro del panel se apaga.
+defineProps({ titulo: { type: String, required: true }, enlaceAdmin: { type: Boolean, default: true } })
 const auth = useAuthStore()
 const router = useRouter()
 
@@ -37,6 +38,7 @@ async function salir() {
     <h1 class="truncate text-lg font-bold">{{ titulo }}</h1>
     <div class="flex items-center gap-2">
       <span class="hidden truncate text-sm sm:inline">{{ auth.usuario && auth.usuario.nombre }}</span>
+      <button v-if="enlaceAdmin && auth.tiene('administrar')" class="btn min-w-tactil bg-morado-800 text-white" data-test="ir-admin" type="button" @click="router.push('/admin')">Admin</button>
       <button class="btn min-w-tactil bg-morado-800 text-white" :disabled="saliendo" @click="salir">{{ saliendo ? 'Enviando…' : 'Salir' }}</button>
     </div>
   </header>

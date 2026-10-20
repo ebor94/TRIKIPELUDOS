@@ -6,13 +6,14 @@ const enlaces = [
   { to: '/admin/importar', texto: 'Importar' },
   { to: '/admin/participantes', texto: 'Participantes' },
   { to: '/admin/ranking', texto: 'Ranking' },
-  { to: '/admin/usuarios', texto: 'Usuarios' }
+  { to: '/admin/usuarios', texto: 'Usuarios' },
+  { to: '/cabina', texto: 'Cabina' }
 ]
 </script>
 
 <template>
   <div class="min-h-screen">
-    <BarraSuperior titulo="TRIKIPELUDOS · Admin" />
+    <BarraSuperior titulo="TRIKIPELUDOS · Admin" :enlace-admin="false" />
     <nav class="flex gap-1 overflow-x-auto bg-white px-2 py-1 shadow-sm">
       <RouterLink
         v-for="e in enlaces" :key="e.to" :to="e.to"

@@ -79,3 +79,19 @@ test('I4: un fallo al sincronizar no impide decidir salir', async () => {
   expect(window.confirm).toHaveBeenCalled()
   expect(auth.logout).toHaveBeenCalled()
 })
+
+test('el administrador ve un botón "Admin" que lo devuelve al panel (p. ej. desde Cabina)', async () => {
+  const auth = useAuthStore()
+  auth.usuario = { id: 1, permisos: { administrar: true, cabina: true } }
+  const w = mount(BarraSuperior, { props: { titulo: 'Cabina' } })
+  await w.get('[data-test="ir-admin"]').trigger('click')
+  expect(push).toHaveBeenCalledWith('/admin')
+})
+
+test('sin permiso de administrar no aparece el botón "Admin"; dentro del panel tampoco', () => {
+  const auth = useAuthStore()
+  auth.usuario = { id: 2, permisos: { cabina: true } }
+  expect(mount(BarraSuperior, { props: { titulo: 'Cabina' } }).find('[data-test="ir-admin"]').exists()).toBe(false)
+  auth.usuario = { id: 1, permisos: { administrar: true } }
+  expect(mount(BarraSuperior, { props: { titulo: 'Admin', enlaceAdmin: false } }).find('[data-test="ir-admin"]').exists()).toBe(false)
+})
