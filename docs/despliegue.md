@@ -13,15 +13,18 @@ Si `usuarios.id` es `INT UNSIGNED`, crear una migración `006_ajuste_fk_usuarios
 
 | Variable | Ejemplo | Para qué |
 |---|---|---|
-| `TRK_JWT_SECRET` | 64 caracteres aleatorios (`openssl rand -hex 32`) | Firma de tokens de PIN. **Obligatoria**: sin ella el login con PIN falla (`Falta TRK_JWT_SECRET`) |
+| `TRK_JWT_SECRET` | 64 caracteres aleatorios (`openssl rand -hex 32`) | Firma de tokens de PIN. **Obligatoria** y distinta de `JWT_SECRET`/`IDENTIDAD_JWT_SECRET`: si falta o coincide, todo `/api/trk/*` responde `503 TRK_DESHABILITADO` (Mantix sigue funcionando) y se registra un error al arrancar |
 | `TRK_FOTOS_PATH` | `/var/lib/trikipeludos/fotos` | Carpeta de fotos oficiales (por defecto `<cwd>/uploads/trk/fotos`) |
 | `TRK_FOTOS_URL_BASE` | `https://mantix-api.losolivoscucuta.com:8444/uploads/trk/fotos` | Prefijo de la URL de cada foto (`<base>/<uuid>.jpg`). Por defecto `/uploads/trk/fotos` (relativa; el frontend vive en otro origen, así que en producción debe ser absoluta) |
-| `TRK_PIN_MAX_INTENTOS` | `5` | Intentos de PIN por minuto por IP+usuario (por defecto 5) |
+| `TRK_PIN_MAX_INTENTOS` | `5` | Intentos de PIN por minuto por IP+usuario (por defecto 5). El usuario se cuenta por su id normalizado (`"01"`, `" 1"`, `"1e0"` son el mismo usuario); IPv6 se agrupa por /64 |
+| `TRK_PIN_MAX_FALLOS_USUARIO` | `10` | PIN **fallidos** por usuario en 15 min, desde cualquier IP (por defecto 10). Los ingresos correctos no cuentan. Al superarlo, ese usuario queda bloqueado hasta 15 min, incluso con el PIN correcto |
+| `TRK_PIN_MAX_POR_IP` | `100` | Intentos de PIN (correctos o no) por IP en 15 min (por defecto 100). Todo el evento comparte IP pública: no bajarlo de forma que impida los ingresos legítimos |
 | `PORT` | `3020` | Puerto del backend (por defecto 3020); debe coincidir con `proxy_pass` de Nginx |
 
 Requisitos:
 
-- **`TRK_JWT_SECRET` DEBE ser distinto de `JWT_SECRET`.** El backend **no lo verifica** (solo comprueba que exista): revisarlo a mano antes de desplegar. Si fueran iguales, el aislamiento `scope: 'trk'` entre tokens de PIN y tokens de Mantix pierde su respaldo criptográfico.
+- **`TRK_JWT_SECRET` DEBE ser distinto de `JWT_SECRET` (e `IDENTIDAD_JWT_SECRET`).** El backend lo verifica al cargar: si falta o coincide, el módulo TRK queda deshabilitado (503) y el log muestra `TRIKIPELUDOS deshabilitado: …`. Además Mantix rechaza cualquier token con `scope: 'trk'`. Con menos de 32 caracteres solo se registra una advertencia.
+- Los PIN fallidos se registran (`trk pin fallido`, solo `usuario_id`): muchos seguidos indican un ataque. Un atacante puede bloquear a un usuario hasta 15 min fallando a propósito; regenerar el PIN no lo desbloquea (los contadores están en memoria: esperar o `pm2 restart` del backend).
 - **Node ≥ 16.9** (el módulo usa `Object.hasOwn`). `package.json` no declara `engines`; comprobar `node -v` en `srv-backend`.
 
 ```bash
