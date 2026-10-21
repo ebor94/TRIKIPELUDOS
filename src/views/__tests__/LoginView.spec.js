@@ -79,3 +79,12 @@ test('I5: con sesión guardada (aunque no haya conexión) /login lleva a su pant
   await flushPromises()
   expect(push).toHaveBeenCalledWith('/jurado')
 })
+
+test('muestra el logo oficial del evento con el nombre accesible', async () => {
+  const w = mount(LoginView)
+  await flushPromises()
+  const logo = w.get('[data-test="logo-login"]')
+  expect(logo.attributes('src')).toContain('marca/logo-trikipeludos.webp')
+  expect(logo.attributes('alt')).toContain('TrikiPeludos')
+  expect(w.get('h1').text()).toContain('TRIKIPELUDOS')
+})

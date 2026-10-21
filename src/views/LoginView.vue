@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { trk } from '@/services/api'
 import { mensajeDeError } from '@/utils/errores'
+import { LOGO, ALT_LOGO } from '@/utils/marca'
 
 const router = useRouter()
 const route = useRoute()
@@ -56,9 +57,9 @@ const entrarComoAdmin = () => entrar(() => auth.loginAdmin(email.value, password
 
 <template>
   <main class="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-4 py-8">
-    <header class="text-center">
-      <h1 class="text-3xl font-extrabold text-morado-700">TRIKIPELUDOS</h1>
-      <p class="text-morado-600">Concurso de disfraces de mascotas</p>
+    <header>
+      <h1 class="sr-only">TRIKIPELUDOS · Concurso de disfraces de mascotas</h1>
+      <img data-test="logo-login" :src="LOGO" :alt="ALT_LOGO" width="1396" height="664" class="h-auto w-full rounded-3xl shadow-lg" />
     </header>
 
     <div class="grid grid-cols-2 gap-2" role="tablist">

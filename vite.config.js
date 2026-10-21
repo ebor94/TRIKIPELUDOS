@@ -23,7 +23,7 @@ export default defineConfig({
       },
       workbox: {
         // Solo el shell: los datos van por la cola de IndexedDB, no por el service worker (D13).
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,css,html,svg,webp}'],
         navigateFallback: '/trikipeludos/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//, /^\/uploads\//]
       }

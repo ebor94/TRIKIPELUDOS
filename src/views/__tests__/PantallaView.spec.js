@@ -49,3 +49,11 @@ test('modo ranking: muestra el podio de la categoría publicada', async () => {
   expect(w.get('[data-test="podio"]').text()).toContain('Canela')
   expect(w.text()).toContain('91.5')
 })
+
+test('en espera muestra la portada: logo oficial y la imagen de mascotas disfrazadas', async () => {
+  trk.get.mockResolvedValue({ data: { modo_pantalla: 'PASARELA', categoria_pantalla: null, ranking: null, en_pasarela: null } })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.get('[data-test="logo"]').attributes('src')).toContain('marca/logo-trikipeludos.webp')
+  expect(w.get('[data-test="portada-mascotas"]').attributes('src')).toContain('marca/mascotas.webp')
+})

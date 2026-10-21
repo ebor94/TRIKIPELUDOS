@@ -4,10 +4,13 @@ import { useEventoStore } from '@/stores/evento'
 import { useTiempoReal } from '@/composables/useTiempoReal'
 import FotoMascota from '@/components/FotoMascota.vue'
 import PodioRanking from '@/components/PodioRanking.vue'
+import PortadaEvento from '@/components/PortadaEvento.vue'
+import { LOGO, ALT_LOGO } from '@/utils/marca'
 
 const evento = useEventoStore()
-const logo = import.meta.env.VITE_LOGO_URL || `${import.meta.env.BASE_URL}logo-evento.svg`
 const p = computed(() => evento.enPasarela)
+// En espera la portada ya muestra el logo grande: la cabecera solo lo repite cuando hay contenido
+const enEspera = computed(() => evento.modoPantalla === 'PASARELA' ? !p.value : !(evento.modoPantalla === 'RANKING' && evento.ranking))
 
 useTiempoReal({
   token: null,
@@ -23,8 +26,8 @@ useTiempoReal({
 
 <template>
   <main class="flex min-h-screen flex-col bg-morado-900 p-6 text-crema">
-    <header class="mb-4 flex items-center justify-between">
-      <img :src="logo" alt="TRIKIPELUDOS" class="h-16" />
+    <header v-if="!enEspera" class="mb-4 flex items-center justify-between">
+      <img :src="LOGO" :alt="ALT_LOGO" class="h-20 w-auto rounded-2xl shadow-lg" />
       <span v-if="p && evento.modoPantalla === 'PASARELA'" class="text-3xl font-bold text-calabaza-300">🎃 En pasarela</span>
     </header>
 
@@ -37,7 +40,7 @@ useTiempoReal({
           <p v-if="p.categoria" class="text-3xl text-morado-100">{{ p.categoria.nombre }}</p>
         </div>
       </div>
-      <img v-else data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
+      <PortadaEvento v-else />
     </section>
 
     <section v-else-if="evento.modoPantalla === 'RANKING' && evento.ranking" class="mx-auto w-full max-w-6xl">
@@ -45,7 +48,7 @@ useTiempoReal({
       <PodioRanking :ranking="evento.ranking" grande />
     </section>
     <section v-else class="flex flex-1 items-center justify-center">
-      <img data-test="logo" :src="logo" alt="TRIKIPELUDOS" class="w-full max-w-xl" />
+      <PortadaEvento />
     </section>
   </main>
 </template>
