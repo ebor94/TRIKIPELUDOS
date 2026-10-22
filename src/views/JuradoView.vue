@@ -46,30 +46,50 @@ const rechazadas = computed(() => Object.entries(cola.rechazadas).map(([pid, r])
   pid, nombre: (filas.value.find((f) => f.id === pid) || { participante: {} }).participante.mascota_nombre || 'Una mascota', message: r.message
 })))
 
-// Lo local manda: una fila pendiente en IndexedDB o que se está guardando conserva lo que el jurado escribió.
-function aplicarMatriz(data) {
+// Reloj lógico: avanza con cada edición local y se anota al pedir la matriz. Una respuesta pedida antes de la
+// última edición de una fila no pisa esa fila (el GET pudo salir antes de que el autoguardado llegara al servidor).
+let reloj = 0
+const ultimoCambio = {} // participanteId → reloj de su última edición local
+let pedidoActual = 0 // secuencia de GET /jurado/matriz: solo la respuesta del último pedido se aplica
+let matrizPedidaEn = 0 // reloj en que se pidió la matriz aplicada (para re-aplicarla tras cargar la cola)
+
+// Lo local manda: una fila pendiente en IndexedDB, que se está guardando o editada después del pedido
+// conserva lo que el jurado escribió.
+function aplicarMatriz(data, pedidaEn) {
   const nuevos = {}
   for (const f of data.filas) {
     const pid = f.participante.id
     const local = cola.pendientes[pid]
+    const editadaDespues = (ultimoCambio[pid] || 0) > pedidaEn
     if (local) nuevos[pid] = aMapa(local.puntajes)
-    else if (cola.estados[pid] === 'GUARDANDO' && valores.value[pid]) nuevos[pid] = valores.value[pid]
+    else if ((editadaDespues || cola.estados[pid] === 'GUARDANDO') && valores.value[pid]) nuevos[pid] = valores.value[pid]
     else nuevos[pid] = { ...f.borrador }
   }
   matriz.value = data
+  matrizPedidaEn = pedidaEn
   valores.value = nuevos
 }
 
 async function cargar() {
+  const mio = ++pedidoActual
+  const pedidaEn = reloj
+  const elegida = categoriaElegida.value
   try {
-    const params = categoriaElegida.value ? { categoria: categoriaElegida.value } : {}
-    aplicarMatriz((await trk.get('/jurado/matriz', { params })).data)
+    const params = elegida ? { categoria: elegida } : {}
+    const { data } = await trk.get('/jurado/matriz', { params })
+    // Descarta respuestas viejas (latest wins) y las de una categoría distinta a la elegida ahora.
+    if (mio !== pedidoActual || elegida !== categoriaElegida.value) return
+    if (elegida && data.categoria && Number(data.categoria.id) !== Number(elegida)) return
+    aplicarMatriz(data, pedidaEn)
     errorCarga.value = ''
-  } catch (e) { errorCarga.value = mensajeDeError(e) }
+  } catch (e) {
+    if (mio === pedidoActual) errorCarga.value = mensajeDeError(e)
+  }
 }
 
 function alCambiar({ participanteId, criterioId, valor }) {
   aviso.value = ''
+  ultimoCambio[participanteId] = ++reloj
   valores.value = { ...valores.value, [participanteId]: { ...(valores.value[participanteId] || {}), [criterioId]: valor } }
   cola.anotar(juradoId.value, participanteId, aLista(valores.value[participanteId], criterios.value))
     .catch((e) => { error.value = mensajeDeError(e) })
@@ -110,7 +130,7 @@ onMounted(async () => {
   try {
     // Lo que quedó en IndexedDB (sin enviar) se muestra sobre lo del servidor y se reintenta de inmediato.
     await cola.cargarPendientes(juradoId.value)
-    if (matriz.value) aplicarMatriz(matriz.value)
+    if (matriz.value) aplicarMatriz(matriz.value, matrizPedidaEn)
     cola.sincronizar(juradoId.value).catch(() => {})
   } catch (e) { error.value = mensajeDeError(e) }
 })
@@ -156,11 +176,11 @@ onBeforeUnmount(() => detenerSync && detenerSync())
       </template>
     </main>
 
-    <div v-if="matriz && matriz.categoria" class="fixed inset-x-0 bottom-0 bg-white/95 p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+    <div v-if="matriz && matriz.categoria" class="fixed inset-x-0 bottom-0 z-20 bg-white/95 p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
       <button class="btn-primario min-h-[56px] w-full text-lg" data-test="enviar-final" :disabled="!puedeEnviar" @click="confirmando = true">Enviar calificación final ({{ pendientes.length }})</button>
     </div>
 
-    <div v-if="confirmando" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion" data-test="confirmacion" class="fixed inset-0 z-20 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+    <div v-if="confirmando" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacion" data-test="confirmacion" class="fixed inset-0 z-30 flex items-end justify-center bg-black/50 p-4 sm:items-center">
       <div class="tarjeta flex max-h-[80vh] w-full max-w-md flex-col gap-3 overflow-y-auto">
         <h2 id="titulo-confirmacion" class="text-xl font-bold">¿Enviar calificación final?</h2>
         <p>Se enviarán {{ pendientes.length }} mascota(s) de {{ matriz.categoria.nombre }}. Después no podrás modificarlas.</p>

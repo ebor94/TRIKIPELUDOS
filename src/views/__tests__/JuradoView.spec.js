@@ -217,3 +217,64 @@ test('la vista del jurado no muestra datos del responsable en ninguna parte', as
   const w = await montar()
   expect(w.text()).not.toContain('Ana')
 })
+
+const diferida = () => {
+  let resolver
+  const promesa = new Promise((r) => { resolver = r })
+  return { promesa, resolver }
+}
+
+test('una recarga pedida antes de editar no pisa la celda ya escrita/guardada (última escritura local gana)', async () => {
+  const w = await montar()
+  const lenta = diferida()
+  const vieja = matrizBase() // borrador del servidor anterior a la edición: { 1: 5, 2: null }
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/jurado/matriz') return lenta.promesa
+    throw new Error(`GET inesperado ${url}`)
+  })
+  tiempoReal.opciones.eventos['foto:nueva']({})
+  await w.get('[data-test="celda-t-2"]').setValue('3')
+  useCalificacionStore().estados = { t: 'GUARDADO' }
+  lenta.resolver({ data: vieja })
+  await flushPromises()
+  expect(w.get('[data-test="celda-t-2"]').element.value).toBe('3')
+  expect(w.get('[data-test="total-t"]').text()).toBe('8')
+})
+
+test('una respuesta pedida después de la edición sí se aplica', async () => {
+  const w = await montar()
+  await w.get('[data-test="celda-t-2"]').setValue('3')
+  respuesta = matrizBase()
+  respuesta.filas[0].borrador = { 1: 6, 2: 4 }
+  tiempoReal.opciones.eventos['foto:nueva']({})
+  await flushPromises()
+  expect(w.get('[data-test="celda-t-1"]').element.value).toBe('6')
+})
+
+test('cambio rápido de categoría: la respuesta lenta de la primera se descarta', async () => {
+  const w = await montar()
+  const lenta = diferida()
+  const felinos = { categoria: { ...CATS[1] }, categorias: CATS, criterios: CRITERIOS, puntaje_total_max: 17,
+    filas: [{ participante: { id: 'g', mascota_nombre: 'Garfield', estado: 'PRESENTADO', categoria_id: 3 }, borrador: {}, final: { ...SIN_FINAL } }] }
+  trk.get.mockImplementation(async (url, o) => {
+    if (url !== '/jurado/matriz') throw new Error(`GET inesperado ${url}`)
+    return o.params.categoria === 3 ? lenta.promesa : { data: matrizBase() }
+  })
+  await w.get('[data-test="selector-categoria"]').setValue('3')
+  await w.get('[data-test="selector-categoria"]').setValue('1')
+  await flushPromises()
+  lenta.resolver({ data: felinos })
+  await flushPromises()
+  expect(w.get('[data-test="selector-categoria"]').element.value).toBe('1')
+  expect(w.find('[data-test="fila-g"]').exists()).toBe(false)
+  expect(w.find('[data-test="fila-t"]').exists()).toBe(true)
+})
+
+test('la barra fija queda sobre las celdas sticky y el diálogo sobre la barra', async () => {
+  respuesta.filas[0].borrador = { 1: 4, 2: 4 }
+  const w = await montar()
+  const barra = w.get('[data-test="enviar-final"]').element.parentElement
+  expect(barra.classList.contains('z-20')).toBe(true)
+  await w.get('[data-test="enviar-final"]').trigger('click')
+  expect(w.get('[data-test="confirmacion"]').classes()).toContain('z-30')
+})
