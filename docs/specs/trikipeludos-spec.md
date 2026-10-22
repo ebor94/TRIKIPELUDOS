@@ -159,6 +159,7 @@ Formato: **HU-n** — historia. *CA* = criterios de aceptación verificables (ba
 
 ### Jurado
 **HU-8 — Calificar.** Como jurado, quiero calificar a la mascota en pasarela rápidamente desde mi celular.
+> **Reemplazada por HU-8b (v2.1, §15).** CA1–CA5 describen el flujo original mascota por mascota; siguen vigentes CA6 (el total lo calcula el servidor), la idempotencia de CA5 para `TRK-CAL-002` y el bloqueo R7 de las calificaciones finales.
 - CA1: Al entrar, ve por defecto la mascota `EN_PASARELA`. También puede abrir una galería de mascotas presentes con insignia "Calificada / Pendiente" para él.
 - CA2: La pantalla de calificación muestra la foto oficial, datos de la mascota (mismos campos que HU-6) y los criterios de la rúbrica de **su** categoría con su máximo y descripción.
 - CA3: Muestra el total en vivo (x / 100) mientras se ajusta.
@@ -365,6 +366,9 @@ Prefijo `/api/trk/v1`. Permiso = clave en `roles.permisos.trk` (`requirePermiso`
 | TRK-CAL-001 | GET | `/calificaciones/mias` | `calificar` | Insignias Calificada / Pendiente del jurado |
 | TRK-CAL-002 | PUT | `/calificaciones/:participanteId` | `calificar` | Crea/envía calificación (idempotente) |
 | TRK-CAL-003 | POST | `/calificaciones/:id/desbloquear` | `calificaciones_desbloquear` | Desbloquea (auditado) |
+| TRK-CAL-004 | GET | `/jurado/matriz?categoria=` | `calificar` | Matriz del jurado: criterios y filas (en pasarela + ya desfilaron) con borrador y estado final (v2.1) |
+| TRK-CAL-005 | PUT | `/borradores/:participanteId` | `calificar` | Guarda puntajes tentativos parciales del jurado (v2.1) |
+| TRK-CAL-006 | POST | `/calificaciones/finalizar` | `calificar` | Envío final de una categoría: borradores completos → calificaciones bloqueadas, todo o nada (v2.1) |
 | TRK-CAT-001 | POST | `/categorias/:id/abrir` | `administrar` | Abre la categoría |
 | TRK-CAT-002 | POST | `/categorias/:id/cerrar` | `administrar` | Cierra la categoría |
 | TRK-CAT-003 | POST | `/categorias/:id/publicar` | `publicar` | Publica ranking (snapshot) |
@@ -392,8 +396,7 @@ Prefijo `/api/trk/v1`. Permiso = clave en `roles.permisos.trk` (`requirePermiso`
 | `/admin/ranking` | admin | Ranking en vivo por categoría, desempates, publicar, exportar |
 | `/cabina` | cabina | Buscador + lista; ficha con botón grande "Tomar foto" |
 | `/comentarista` | comentarista | Cola por categoría + ficha grande + "Llamar a pasarela" |
-| `/jurado` | jurado | Mascota en pasarela; galería con estado Calificada/Pendiente |
-| `/jurado/calificar/:id` | jurado | Foto, datos, deslizadores por criterio, total en vivo, Enviar |
+| `/jurado` | jurado | Tarjeta "En pasarela" + matriz de calificación tentativa por categoría, total y puesto tentativo, "Enviar calificación final" (HU-8b) |
 | `/pantalla` | público | Modo pasarela / ranking (controlado por el admin, HU-4 CA6) |
 
 ---
@@ -465,3 +468,27 @@ Decisiones adicionales tomadas en el brainstorming:
 - Una mascota compite en una sola categoría (HU-1 CA3b).
 - Una fusión con choque de jurado se bloquea (HU-3 CA2).
 - Usuarios y roles sobre el modelo de Mantix; PIN solo para roles operativos (§2.1).
+
+
+---
+
+## 15. Cambio v2.1 — Matriz de calificación del jurado (2026-10-22)
+
+Solicitud del evento: el jurado califica en una matriz tipo tabla, con puntajes **tentativos** que ajusta sobre la marcha, y al final envía la calificación definitiva. Decisiones (aprobadas por el usuario): borradores **en el servidor**; envío final **por categoría**; filas = **quien está en pasarela + las que ya desfilaron**; el ranking oficial usa **solo calificaciones finales**.
+
+**HU-8b — Matriz del jurado.** Como jurado, quiero ver en una tabla a las mascotas de la categoría que está desfilando, anotar puntajes tentativos, ver el total y mi ranking tentativo, ajustarlos mientras avanza el desfile y al final enviar mi calificación definitiva.
+- CA1: `/jurado` muestra arriba la tarjeta "En pasarela" (foto oficial, nombre, disfraz, categoría) en tiempo real. La matriz muestra la categoría de quien está en pasarela; un selector permite ver otra categoría.
+- CA2: Filas: la mascota `EN_PASARELA` (resaltada, primera) y las `PRESENTADO` de la categoría. No aparecen `INSCRITO`, `PRESENTE` ni `AUSENTE`, ni las fusionadas. Nunca se envían datos del responsable.
+- CA3: Columnas: nombre (+ foto miniatura, columna fija), un criterio por columna con su máximo en el encabezado (de la rúbrica sembrada, nunca constantes), **Total** y **Puesto tentativo**. A 360 px la tabla se desplaza horizontalmente.
+- CA4: Cada casilla acepta enteros de 0 al máximo del criterio; puede quedar vacía. Total y puesto tentativo se recalculan al escribir. Puesto tentativo: orden por total descendente sobre las filas completas; empates marcados con "=" (las reglas oficiales R3–R6 solo aplican al ranking oficial).
+- CA5: Guardado automático por fila (`TRK-CAL-005`), con indicador Guardado / Guardando… / Sin conexión. Sin red, el último borrador de cada fila espera en el dispositivo y se reenvía al volver (última escritura gana). El borrador se puede cambiar cuantas veces se quiera mientras la fila no sea final.
+- CA6: Botón fijo "Enviar calificación final (N)" — N = filas no finales de la categoría. Habilitado solo si todas esas filas tienen todos los criterios. Pide confirmación mostrando el ranking tentativo. `TRK-CAL-006` convierte los borradores en calificaciones **bloqueadas** (R7) en una transacción: todo o nada; auditoría `CREAR` por calificación; emite `calificacion:recibida` al admin. Requiere conexión.
+- CA7: Las filas finales se muestran con ✓ y no son editables; corregirlas sigue requiriendo el desbloqueo del admin (HU-4, `TRK-CAL-003`). Una calificación desbloqueada vuelve a ser editable en la matriz y se envía de nuevo con el botón final (auditoría `REENVIAR`).
+- CA8: Si una mascota de la categoría desfila después del envío final, aparece como fila pendiente y el botón vuelve a habilitarse para ella.
+- CA9: El ranking oficial (admin, comentarista, pantalla, exportación) y el tablero de progreso solo cuentan calificaciones finales; los borradores son privados de cada jurado.
+
+**Errores de `TRK-CAL-006`:** 409 `ESTADO_INVALIDO` si alguna fila dejó de ser calificable; 409 `CATEGORIA_CERRADA`; 422 `CALIFICACION_INCOMPLETA` con la lista de mascotas incompletas; 409 `SIN_PENDIENTES` si no hay nada que enviar. `TRK-CAL-005` responde 409 `CALIFICACION_BLOQUEADA` si la fila ya es final y 422 `VALIDACION` si un puntaje excede el máximo.
+
+**Modelo:** nueva tabla `trk_borradores(id, participante_id, jurado_id, criterio_id, puntaje null, updated_at)`, única por `(participante_id, jurado_id, criterio_id)`, FK a participantes, usuarios y criterios. Los borradores no se auditan (son notas privadas); se conservan tras el envío final para trazabilidad.
+
+**Se retira:** la ruta `/jurado/calificar/:id` y la galería de insignias; `TRK-CAL-002` se mantiene en la API (compatibilidad y pruebas) pero la interfaz ya no lo usa.
