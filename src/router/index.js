@@ -7,7 +7,6 @@ export const routes = [
   { path: '/pantalla', component: () => import('@/views/PantallaView.vue'), meta: { publica: true } },
   { path: '/cabina', component: () => import('@/views/CabinaView.vue'), meta: { permiso: 'cabina' } },
   { path: '/jurado', component: () => import('@/views/JuradoView.vue'), meta: { permiso: 'calificar' } },
-  { path: '/jurado/calificar/:id', component: () => import('@/views/CalificarView.vue'), meta: { permiso: 'calificar' } },
   { path: '/comentarista', component: () => import('@/views/ComentaristaView.vue'), meta: { permiso: 'pasarela' } },
   {
     path: '/admin',
