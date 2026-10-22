@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useEventoStore } from '@/stores/evento'
@@ -52,6 +52,14 @@ let reloj = 0
 const ultimoCambio = {} // participanteId → reloj de su última edición local
 let pedidoActual = 0 // secuencia de GET /jurado/matriz: solo la respuesta del último pedido se aplica
 let matrizPedidaEn = 0 // reloj en que se pidió la matriz aplicada (para re-aplicarla tras cargar la cola)
+
+// Una fila que deja de estar 'GUARDANDO' (su PUT terminó) cuenta como cambiada en ese momento: un GET pedido
+// antes pudo ser atendido con el borrador anterior al PUT y no debe pisarla.
+watch(() => cola.estados, (nuevos, previos) => {
+  for (const pid of Object.keys(previos || {})) {
+    if (previos[pid] === 'GUARDANDO' && nuevos[pid] !== 'GUARDANDO') ultimoCambio[pid] = ++reloj
+  }
+})
 
 // Lo local manda: una fila pendiente en IndexedDB, que se está guardando o editada después del pedido
 // conserva lo que el jurado escribió.

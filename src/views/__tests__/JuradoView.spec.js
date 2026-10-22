@@ -241,6 +241,27 @@ test('una recarga pedida antes de editar no pisa la celda ya escrita/guardada (�
   expect(w.get('[data-test="total-t"]').text()).toBe('8')
 })
 
+test('un GET enviado mientras la fila se guardaba y resuelto tras terminar el PUT no pisa sus celdas', async () => {
+  const w = await montar()
+  const cola = useCalificacionStore()
+  await w.get('[data-test="celda-t-2"]').setValue('3')
+  cola.estados = { t: 'GUARDANDO' }
+  const lenta = diferida()
+  const vieja = matrizBase() // el servidor aun tenia { 1: 5, 2: null } cuando se atendio el GET
+  trk.get.mockImplementation(async (url) => {
+    if (url === '/jurado/matriz') return lenta.promesa
+    throw new Error(`GET inesperado ${url}`)
+  })
+  tiempoReal.opciones.eventos['foto:nueva']({})
+  await flushPromises()
+  cola.estados = { t: 'GUARDADO' } // el PUT termino antes de que llegue la respuesta del GET
+  await flushPromises()
+  lenta.resolver({ data: vieja })
+  await flushPromises()
+  expect(w.get('[data-test="celda-t-2"]').element.value).toBe('3')
+  expect(w.get('[data-test="total-t"]').text()).toBe('8')
+})
+
 test('una respuesta pedida después de la edición sí se aplica', async () => {
   const w = await montar()
   await w.get('[data-test="celda-t-2"]').setValue('3')
