@@ -57,3 +57,32 @@ test('en espera muestra la portada: logo oficial y la imagen de mascotas disfraz
   expect(w.get('[data-test="logo"]').attributes('src')).toContain('marca/logo-trikipeludos.webp')
   expect(w.get('[data-test="portada-mascotas"]').attributes('src')).toContain('marca/mascotas.webp')
 })
+
+const pasarelaCanela = { modo_pantalla: 'PASARELA', categoria_pantalla: null, ranking: null, en_pasarela: { id: 'a', mascota_nombre: 'Canela', disfraz_nombre: 'Bruja', categoria: { nombre: 'Pequeños' }, foto_url: '/f.jpg' } }
+
+test('diseño del evento: fondo, logo, patrocinadores y etiqueta "En pasarela"', async () => {
+  trk.get.mockResolvedValue({ data: pasarelaCanela })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.get('[data-test="pantalla"]').attributes('style')).toContain('marca/fondo-pantalla.webp')
+  expect(w.get('[data-test="logo-texto"]').attributes('src')).toContain('marca/logo-texto.webp')
+  expect(w.get('[data-test="patrocinadores"]').attributes('src')).toContain('marca/patrocinadores.webp')
+  expect(w.get('[data-test="etiqueta"]').text()).toBe('En pasarela')
+})
+
+test('modo ganadores: podio 2-1-3 con trofeos, nombre y puntaje, y la categoría bajo el logo', async () => {
+  const fila = (id, nombre, puesto, puntaje) => ({ participante_id: id, mascota_nombre: nombre, puesto, puntaje_final: puntaje, premiado: true, completa: true, participante: { id, mascota_nombre: nombre } })
+  trk.get.mockResolvedValue({ data: {
+    modo_pantalla: 'RANKING', categoria_pantalla: { nombre: 'Caninos pequeños y medianos' }, en_pasarela: null,
+    ranking: { categoria: { nombre: 'Caninos pequeños y medianos', puestos_premiados: 3 }, filas: [fila('c', 'Caramelo', 1, 98), fila('d', 'Dalila', 2, 77), fila('a', 'Ares', 3, 58)] }
+  } })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.get('[data-test="etiqueta"]').text()).toBe('Ganadores')
+  expect(w.get('[data-test="categoria-ranking"]').text()).toBe('Caninos pequeños y medianos')
+  const puestos = w.findAll('[data-test="podio"] [data-puesto]')
+  expect(puestos.map((p) => p.attributes('data-puesto'))).toEqual(['2', '1', '3'])
+  expect(puestos[1].get('img[data-test="trofeo"]').attributes('src')).toContain('marca/trofeo-1.webp')
+  expect(puestos[1].text()).toContain('Caramelo')
+  expect(puestos[1].text()).toContain('98')
+})

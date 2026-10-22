@@ -1,16 +1,33 @@
 <script setup>
-import { computed } from 'vue'
+import '@fontsource/fredoka/latin-700.css'
+import '@fontsource/lilita-one/latin-400.css'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useEventoStore } from '@/stores/evento'
 import { useTiempoReal } from '@/composables/useTiempoReal'
 import FotoMascota from '@/components/FotoMascota.vue'
-import PodioRanking from '@/components/PodioRanking.vue'
+import PodioPantalla from '@/components/PodioPantalla.vue'
 import PortadaEvento from '@/components/PortadaEvento.vue'
-import { LOGO, ALT_LOGO } from '@/utils/marca'
+import { LOGO_TEXTO, ALT_LOGO, FONDO_PANTALLA, PATROCINADORES, ALT_PATROCINADORES } from '@/utils/marca'
 
 const evento = useEventoStore()
 const p = computed(() => evento.enPasarela)
-// En espera la portada ya muestra el logo grande: la cabecera solo lo repite cuando hay contenido
-const enEspera = computed(() => evento.modoPantalla === 'PASARELA' ? !p.value : !(evento.modoPantalla === 'RANKING' && evento.ranking))
+const enRanking = computed(() => evento.modoPantalla === 'RANKING' && !!evento.ranking)
+const enPasarela = computed(() => evento.modoPantalla === 'PASARELA' && !!p.value)
+const etiqueta = computed(() => (enRanking.value ? 'Ganadores' : enPasarela.value ? 'En pasarela' : null))
+
+// El diseño está hecho sobre un lienzo de 2000×1125 (16:9): se escala para caber en cualquier TV o proyector.
+const ANCHO = 2000
+const ALTO = 1125
+const escala = ref(1)
+function ajustar() { escala.value = Math.min(window.innerWidth / ANCHO, window.innerHeight / ALTO) }
+onMounted(() => { ajustar(); window.addEventListener('resize', ajustar) })
+onBeforeUnmount(() => window.removeEventListener('resize', ajustar))
+
+// Nombres largos: se reduce la letra para que quepan en el ancho disponible (~1000 px del lienzo).
+const tamanoNombre = computed(() => {
+  const n = p.value && p.value.mascota_nombre ? p.value.mascota_nombre.length : 1
+  return `${Math.round(Math.min(150, 1000 / (n * 0.6)))}px`
+})
 
 useTiempoReal({
   token: null,
@@ -25,30 +42,43 @@ useTiempoReal({
 </script>
 
 <template>
-  <main class="flex min-h-screen flex-col bg-morado-900 p-6 text-crema">
-    <header v-if="!enEspera" class="mb-4 flex items-center justify-between">
-      <img :src="LOGO" :alt="ALT_LOGO" class="h-20 w-auto rounded-2xl shadow-lg" />
-      <span v-if="p && evento.modoPantalla === 'PASARELA'" class="text-3xl font-bold text-calabaza-300">🎃 En pasarela</span>
-    </header>
-
-    <section v-if="evento.modoPantalla === 'PASARELA'" class="flex flex-1 items-center justify-center">
-      <div v-if="p" class="grid w-full max-w-6xl items-center gap-8 md:grid-cols-2">
-        <FotoMascota :participante="p" clase="aspect-[4/5] w-full max-h-[80vh] rounded-3xl shadow-2xl" />
-        <div class="flex flex-col gap-4 text-center md:text-left">
-          <h1 class="text-6xl font-extrabold md:text-7xl">{{ p.mascota_nombre }}</h1>
-          <p v-if="p.disfraz_nombre" class="text-4xl text-calabaza-300">«{{ p.disfraz_nombre }}»</p>
-          <p v-if="p.categoria" class="text-3xl text-morado-100">{{ p.categoria.nombre }}</p>
-        </div>
+  <main
+    data-test="pantalla"
+    class="fixed inset-0 overflow-hidden bg-morado-900 bg-cover bg-center text-crema"
+    :style="{ backgroundImage: `url(${FONDO_PANTALLA})` }"
+  >
+    <div
+      class="absolute left-1/2 top-1/2"
+      :style="{ width: `${ANCHO}px`, height: `${ALTO}px`, transform: `translate(-50%, -50%) scale(${escala})` }"
+    >
+      <img
+        v-if="enPasarela || enRanking" data-test="logo-texto" :src="LOGO_TEXTO" :alt="ALT_LOGO"
+        class="absolute left-[45px] top-[40px] w-[455px] drop-shadow-xl"
+      />
+      <p v-if="enRanking" data-test="categoria-ranking" class="contorno-oscuro absolute left-[35px] top-[195px] max-w-[560px] font-cartel text-[46px] leading-tight text-calabaza-400">{{ evento.ranking.categoria.nombre }}</p>
+      <img data-test="patrocinadores" :src="PATROCINADORES" :alt="ALT_PATROCINADORES" class="absolute left-[628px] top-0 w-[812px]" />
+      <div v-if="etiqueta" class="absolute right-[48px] top-[30px] flex items-center gap-3">
+        <span class="text-[56px] leading-none" aria-hidden="true">🎃</span>
+        <span data-test="etiqueta" class="contorno-oscuro rounded-xl border-2 border-calabaza-200/80 px-5 py-1 font-cartel text-[46px] leading-tight text-calabaza-400">{{ etiqueta }}</span>
       </div>
-      <PortadaEvento v-else />
-    </section>
 
-    <section v-else-if="evento.modoPantalla === 'RANKING' && evento.ranking" class="mx-auto w-full max-w-6xl">
-      <h1 class="mb-6 text-center text-5xl font-extrabold">🏆 {{ evento.ranking.categoria.nombre }}</h1>
-      <PodioRanking :ranking="evento.ranking" grande />
-    </section>
-    <section v-else class="flex flex-1 items-center justify-center">
-      <PortadaEvento />
-    </section>
+      <template v-if="enPasarela">
+        <FotoMascota
+          :participante="p"
+          clase="absolute left-[378px] top-[345px] h-[615px] w-[494px] rounded-[22px] border-4 border-morado-900 bg-black shadow-2xl"
+        />
+        <div class="absolute left-[945px] top-[490px] flex max-w-[1010px] flex-col">
+          <h1 class="contorno-blanco font-nombre font-bold leading-none text-[#8E2BD6]" :style="{ fontSize: tamanoNombre }">{{ p.mascota_nombre }}</h1>
+          <p v-if="p.disfraz_nombre" class="contorno-blanco mt-3 font-cartel text-[84px] leading-none text-calabaza-500">&lt;{{ p.disfraz_nombre }}&gt;</p>
+          <p v-if="p.categoria" class="contorno-blanco mt-5 font-cartel text-[44px] italic leading-none text-[#2a1206]">{{ p.categoria.nombre }}</p>
+        </div>
+      </template>
+
+      <PodioPantalla v-else-if="enRanking" :ranking="evento.ranking" />
+
+      <div v-else class="absolute inset-x-[160px] top-[330px] flex justify-center">
+        <PortadaEvento />
+      </div>
+    </div>
   </main>
 </template>

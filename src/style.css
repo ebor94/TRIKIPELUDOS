@@ -10,3 +10,19 @@
   .campo { @apply w-full rounded-xl border border-morado-200 bg-white px-3 min-h-tactil text-base; }
   .tarjeta { @apply rounded-2xl bg-white shadow-sm p-4; }
 }
+
+@layer utilities {
+  /* Contornos de texto del diseño de la pantalla pública (text-shadow: funciona en cualquier navegador de TV) */
+  .contorno-blanco {
+    text-shadow:
+      0.05em 0 0 #fff, -0.05em 0 0 #fff, 0 0.05em 0 #fff, 0 -0.05em 0 #fff,
+      0.035em 0.035em 0 #fff, -0.035em 0.035em 0 #fff, 0.035em -0.035em 0 #fff, -0.035em -0.035em 0 #fff,
+      0 0.09em 0.12em rgba(0, 0, 0, 0.45);
+  }
+  .contorno-oscuro {
+    text-shadow:
+      0.04em 0 0 #2a1206, -0.04em 0 0 #2a1206, 0 0.04em 0 #2a1206, 0 -0.04em 0 #2a1206,
+      0.03em 0.03em 0 #2a1206, -0.03em 0.03em 0 #2a1206, 0.03em -0.03em 0 #2a1206, -0.03em -0.03em 0 #2a1206,
+      0 0.08em 0.1em rgba(0, 0, 0, 0.5);
+  }
+}

@@ -15,7 +15,12 @@ export default {
         },
         crema: { DEFAULT: '#FFF6E6', 100: '#FFFBF3' }
       },
-      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Pantalla pública (diseño del evento)
+        nombre: ['Fredoka', 'Inter', 'system-ui', 'sans-serif'],
+        cartel: ['"Lilita One"', 'Inter', 'system-ui', 'sans-serif']
+      },
       minHeight: { tactil: '44px' },
       minWidth: { tactil: '44px' }
     }
