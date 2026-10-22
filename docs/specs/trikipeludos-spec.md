@@ -293,6 +293,9 @@ trk_calificaciones(
 trk_calificacion_detalle(id, calificacion_id, criterio_id, puntaje)
   -- 0 <= puntaje <= trk_criterios.puntaje_max, validado en el servicio
   -- UNIQUE uq_trk_calificacion_detalle_cal_crit(calificacion_id, criterio_id)
+trk_borradores(id, participante_id, jurado_id, criterio_id, puntaje null, updated_at,
+  UNIQUE uq_trk_borradores_part_jur_crit(participante_id, jurado_id, criterio_id)
+)  -- v2.1 (HU-8b): puntajes tentativos privados del jurado; no cuentan en ranking ni tablero; no se auditan
 
 trk_auditoria(id, usuario_id, api_codigo, entidad, entidad_id, accion, antes json, despues json, ip, created_at)
   -- usuario_id → usuarios(id)
@@ -330,8 +333,8 @@ El ranking (R3–R6) lo calcula un **servicio JS puro** (`rankingService.calcula
 | 401 | `NO_AUTENTICADO` | Sin token, token inválido o `token_version` vieja |
 | 403 | `SIN_PERMISO` | `requirePermiso('trk', …)` falla |
 | 404 | `NO_ENCONTRADO` | — |
-| 409 | `CALIFICACION_BLOQUEADA`, `CATEGORIA_CERRADA`, `FUSION_CON_CHOQUE`, `CONFIRMACION_REQUERIDA`, `PREVIEW_VENCIDO`, `DUPLICADO`, `ESTADO_INVALIDO`, `CATEGORIAS_DISTINTAS`, `EMPATE_SIN_RESOLVER`, `RANKING_NO_PUBLICADO`, `NO_BLOQUEADA` | Reglas de estado |
-| 422 | `PUNTAJE_FUERA_DE_RANGO`, `CRITERIO_FALTANTE` | R1, HU-8 CA4 |
+| 409 | `CALIFICACION_BLOQUEADA`, `CATEGORIA_CERRADA`, `FUSION_CON_CHOQUE`, `CONFIRMACION_REQUERIDA`, `PREVIEW_VENCIDO`, `DUPLICADO`, `ESTADO_INVALIDO`, `CATEGORIAS_DISTINTAS`, `EMPATE_SIN_RESOLVER`, `RANKING_NO_PUBLICADO`, `NO_BLOQUEADA`, `SIN_PENDIENTES` | Reglas de estado |
+| 422 | `PUNTAJE_FUERA_DE_RANGO`, `CRITERIO_FALTANTE`, `CALIFICACION_INCOMPLETA` | R1, HU-8 CA4, HU-8b CA6 |
 | 429 | `DEMASIADOS_INTENTOS` | Limitador del login con PIN |
 
 ### 9.1 Registro de endpoints
@@ -487,7 +490,7 @@ Solicitud del evento: el jurado califica en una matriz tipo tabla, con puntajes 
 - CA8: Si una mascota de la categoría desfila después del envío final, aparece como fila pendiente y el botón vuelve a habilitarse para ella.
 - CA9: El ranking oficial (admin, comentarista, pantalla, exportación) y el tablero de progreso solo cuentan calificaciones finales; los borradores son privados de cada jurado.
 
-**Errores de `TRK-CAL-006`:** 409 `ESTADO_INVALIDO` si alguna fila dejó de ser calificable; 409 `CATEGORIA_CERRADA`; 422 `CALIFICACION_INCOMPLETA` con la lista de mascotas incompletas; 409 `SIN_PENDIENTES` si no hay nada que enviar. `TRK-CAL-005` responde 409 `CALIFICACION_BLOQUEADA` si la fila ya es final y 422 `VALIDACION` si un puntaje excede el máximo.
+**Errores de `TRK-CAL-006`:** 409 `CATEGORIA_CERRADA` si la categoría está cerrada; 422 `CALIFICACION_INCOMPLETA` con la lista de mascotas incompletas; 409 `SIN_PENDIENTES` si no hay nada que enviar. Las filas pendientes las calcula el servidor; una mascota que dejó de ser calificable simplemente sale del conjunto pendiente (no hay error por ello). **Errores de `TRK-CAL-005`:** 409 `CALIFICACION_BLOQUEADA` si la fila ya es final; 409 `CATEGORIA_CERRADA` si la categoría está cerrada; 422 `PUNTAJE_FUERA_DE_RANGO` si un puntaje no es entero entre 0 y el máximo del criterio; 400 `VALIDACION` si el cuerpo no tiene forma válida o trae criterios repetidos o ajenos. Si un participante cambia de categoría, sus borradores se conservan, pero la matriz y el envío final solo usan los criterios de la rúbrica vigente.
 
 **Modelo:** nueva tabla `trk_borradores(id, participante_id, jurado_id, criterio_id, puntaje null, updated_at)`, única por `(participante_id, jurado_id, criterio_id)`, FK a participantes, usuarios y criterios. Los borradores no se auditan (son notas privadas); se conservan tras el envío final para trazabilidad.
 

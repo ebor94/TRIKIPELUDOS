@@ -7,7 +7,7 @@ SHOW CREATE TABLE usuarios;   -- usuarios.id debe ser INT con signo (las FK trk_
 SELECT id, nombre FROM roles WHERE LOWER(nombre) LIKE '%admin%';   -- estos roles recibirán permisos trk
 ```
 
-Si `usuarios.id` es `INT UNSIGNED`, crear una migración `006_ajuste_fk_usuarios.sql` antes de seguir (no editar 001).
+Si `usuarios.id` es `INT UNSIGNED`, crear una migración `007_ajuste_fk_usuarios.sql` antes de seguir (no editar 001).
 
 ## 1. Variables de entorno de `mantix-backend` (.env)
 
@@ -65,3 +65,14 @@ cd ~/apps/mantix/mantix-backend && bash src/trk/scripts/respaldo.sh ~/respaldos/
 ```
 
 Genera una carpeta `trikipeludos-<fecha>` (permisos 700) con `trk_tablas.sql`, `trk_roles_usuarios.sql`, `fotos.tar.gz` y `SHA256SUMS` (archivos 600). Copiarla fuera del servidor y verificar `SHA256SUMS`.
+
+## 6. Actualización v2.1 (matriz del jurado)
+
+1. Backend: fusionar `feature/trk-matriz` en `main` de `ebor94/mantix`; en `srv-backend`, `bash ~/apps/mantix/mantix-backend/scripts/deploy-mantix.sh` y luego `npm run trk:setup` (aplica la migración 006; no hay variables de entorno nuevas) → debe listar `✅ 006_borradores.sql`. Verificar:
+   ```sql
+   SHOW CREATE TABLE trk_borradores;
+   SELECT nombre FROM trk_migraciones ORDER BY nombre DESC LIMIT 1;  -- 006_borradores.sql
+   ```
+2. Frontend: fusionar `feature/trk-matriz` en `main` de `ebor94/TRIKIPELUDOS`, `npm ci && npm run build` y `rsync` de `dist/` (igual que §3).
+3. Orden: **backend primero** (la nueva interfaz llama a `TRK-CAL-004/005/006`; la anterior sigue funcionando con el backend nuevo porque `TRK-CAL-002` no cambió).
+4. Si algún celular de jurado tiene calificaciones v2 pendientes en su cola local, al abrir la versión nueva se guardan como borrador de esa fila y el jurado las confirma con "Enviar calificación final".

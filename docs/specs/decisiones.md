@@ -150,3 +150,12 @@ Leyenda: ✅ coincide con §11/repo · ⚠️ desviación respecto a §11 · �
 - **Logs:** la línea de request registra la ruta sin query string y los errores 5xx sin `message`/`sql` (pueden contener documentos); helper `errorParaLog`.
 - **Respaldo:** los usuarios se filtran por `rol_id` de roles `TRK_*` (no por dominio de correo); carpeta y archivos con permisos 700/600.
 - **Offline del jurado (alcance):** el perfil de la sesión se guarda junto al token, así una recarga o reapertura sin conexión conserva la sesión del jurado (un 401 sí la cierra y lleva a /login con aviso, sin borrar la cola). **Limitación conocida:** abrir el formulario de calificación sin conexión no funciona (pide la ficha, la rúbrica y "mis calificaciones" al servidor); solo está cubierto perder la conexión con el formulario ya abierto. Se verifica en el paso 5b del ensayo general.
+- **v2.1 — Matriz del jurado (HU-8b):**
+  - `TRK-CAL-005` responde 422 `PUNTAJE_FUERA_DE_RANGO` (motivo existente de R1) en lugar de "422 `VALIDACION`"; `VALIDACION` sigue siendo 400 (forma del cuerpo, criterios repetidos o ajenos). También rechaza con 409 `CATEGORIA_CERRADA`.
+  - `TRK-CAL-006` calcula las filas pendientes en el servidor bajo bloqueo (evento → participantes → categoría): una mascota que dejó de ser calificable simplemente no es pendiente; el 409 `ESTADO_INVALIDO` queda como defensa en el núcleo compartido `registrarFinalEnTx`.
+  - Puntaje vigente de una fila = borrador del jurado; si no hay borrador de un criterio, el de la calificación final (caso: enviada con `TRK-CAL-002` y desbloqueada). Lo usan la matriz y el envío final (`utils/borrador.js`).
+  - Sin nadie en pasarela y sin `?categoria=`, la matriz responde `categoria: null` y el jurado elige en el selector.
+  - La matriz omite `responsable_primer_nombre` (CA2); la tarjeta "En pasarela" del jurado tampoco lo muestra.
+  - Si un participante cambia de categoría (`TRK-PAR-007`), sus borradores no se borran: la matriz y el envío final solo usan los criterios de la rúbrica vigente.
+  - Frontend: misma cola IndexedDB (`trikipeludos/cola_calificaciones`, clave `jurado:participante`, payload `[{ criterio_id, puntaje|null }]`) ahora para borradores; autoguardado tras 700 ms de pausa; el envío final exige que todas las filas de la categoría estén guardadas en el servidor.
+  - `TRK-CAL-001`, `TRK-CAL-002` y `TRK-RUB-001` se mantienen en la API (compatibilidad y pruebas); la interfaz ya no los usa.
