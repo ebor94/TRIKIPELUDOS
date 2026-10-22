@@ -345,7 +345,7 @@ test('finalizar respeta la guarda de sesión: con otro jurado en la pestaña no 
   await s.guardarBorrador(7, 'p1', PUNTAJES)
   trk.put.mockClear()
   useAuthStore().usuario = { id: 8 }
-  await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'SIN_CONEXION' })
+  await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'SESION_CAMBIADA' })
   expect(trk.put).not.toHaveBeenCalled()
   expect(trk.post).not.toHaveBeenCalled()
 })
@@ -356,4 +356,99 @@ test('finalizar con una fila rechazada no envía y pide corregirla', async () =>
   await s.guardarBorrador(7, 'p1', PUNTAJES)
   await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'BORRADOR_RECHAZADO' })
   expect(trk.post).not.toHaveBeenCalled()
+})
+
+// --- Correcciones de revisión (Task 4 fix) ---
+
+test('finalizar tras recargar: lo encolado en IndexedDB se envía antes aunque no esté en memoria', async () => {
+  trk.put.mockRejectedValueOnce({ status: 0 }).mockResolvedValue({ data: {} })
+  trk.post.mockResolvedValue({ data: { categoria_id: 1, calificaciones: [] } })
+  await useCalificacionStore().guardarBorrador(7, 'p1', PUNTAJES)
+  setActivePinia(createPinia())
+  useAuthStore().usuario = { id: 7 }
+  const s = useCalificacionStore()
+  expect(s.pendientes).toEqual({})
+  await s.finalizar(7, 1, ['p1'])
+  expect(trk.put).toHaveBeenCalledTimes(2)
+  expect(trk.put.mock.invocationCallOrder[1]).toBeLessThan(trk.post.mock.invocationCallOrder[0])
+  expect(await cola.listar(7)).toEqual([])
+})
+
+test('finalizar tras recargar sin red: no llama a TRK-CAL-006 y conserva la cola', async () => {
+  trk.put.mockRejectedValue({ status: 0 })
+  await useCalificacionStore().guardarBorrador(7, 'p1', PUNTAJES)
+  setActivePinia(createPinia())
+  useAuthStore().usuario = { id: 7 }
+  const s = useCalificacionStore()
+  await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'SIN_CONEXION' })
+  expect(trk.post).not.toHaveBeenCalled()
+  expect(await cola.listar(7)).toHaveLength(1)
+})
+
+test('finalizar con una fila rechazada al vaciar la cola devuelve ese motivo y no envía', async () => {
+  trk.put.mockRejectedValueOnce({ status: 0 }).mockRejectedValue({ status: 409, motivo: 'CALIFICACION_BLOQUEADA', message: 'Bloqueada' })
+  await useCalificacionStore().guardarBorrador(7, 'p1', PUNTAJES)
+  setActivePinia(createPinia())
+  useAuthStore().usuario = { id: 7 }
+  const s = useCalificacionStore()
+  await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'CALIFICACION_BLOQUEADA' })
+  expect(trk.post).not.toHaveBeenCalled()
+})
+
+test('finalizar con la cola vacía y el token de otro jurado no envía nada (SESION_CAMBIADA)', async () => {
+  trk.post.mockResolvedValue({ data: {} })
+  tokenActual.valor = jwtDe(8)
+  const s = useCalificacionStore()
+  await expect(s.finalizar(7, 1, ['p1'])).rejects.toMatchObject({ motivo: 'SESION_CAMBIADA' })
+  expect(trk.post).not.toHaveBeenCalled()
+  expect(trk.put).not.toHaveBeenCalled()
+})
+
+test('anotar en curso cuando se pulsa finalizar: se guarda primero y no queda un envío tardío', async () => {
+  trk.put.mockResolvedValue({ data: {} })
+  trk.post.mockResolvedValue({ data: { categoria_id: 1, calificaciones: [] } })
+  const s = useCalificacionStore()
+  const escritura = s.anotar(7, 'p1', PUNTAJES, 30)
+  await s.finalizar(7, 1, ['p1'])
+  await escritura
+  expect(trk.put).toHaveBeenCalledWith('/borradores/p1', { puntajes: PUNTAJES })
+  expect(trk.put.mock.invocationCallOrder[0]).toBeLessThan(trk.post.mock.invocationCallOrder[0])
+  await espera(60)
+  expect(trk.put).toHaveBeenCalledTimes(1)
+})
+
+test('anotar en curso cuando se reinicia: no reprograma el envío ni repuebla estados', async () => {
+  const s = useCalificacionStore()
+  const escritura = s.anotar(7, 'p1', PUNTAJES, 30)
+  s.reiniciar()
+  await escritura
+  await espera(60)
+  expect(trk.put).not.toHaveBeenCalled()
+  expect(s.estados).toEqual({})
+  expect(s.pendientes).toEqual({})
+})
+
+test('cargarPendientes no pisa una anotación que llega durante sus esperas', async () => {
+  const s = useCalificacionStore()
+  // En memoria quedó p1 (ya no está en IndexedDB): la carga vieja hacía obtener() y ahí entraba la anotación.
+  s.pendientes = { p1: { juradoId: '7', participanteId: 'p1', puntajes: PUNTAJES, encoladaEn: 1 } }
+  cola.__hook.ventana = () => s.anotar(7, 'p3', PUNTAJES, 10000)
+  const carga = s.cargarPendientes(7)
+  const otra = s.anotar(7, 'p4', PUNTAJES, 10000)
+  await Promise.all([carga, otra])
+  const disparo = !cola.__hook.ventana
+  cola.__hook.ventana = null
+  if (disparo) expect(s.pendientes.p3).toBeTruthy()
+  expect(s.pendientes.p4).toBeTruthy()
+  s.reiniciar()
+})
+
+test('si la guarda de sesión bloquea el envío la fila no queda en "Guardando" y sigue en cola', async () => {
+  tokenActual.valor = jwtDe(8)
+  const s = useCalificacionStore()
+  const r = await s.guardarBorrador(7, 'p1', PUNTAJES)
+  expect(r.estado).toBe('PENDIENTE')
+  expect(s.estados.p1).toBe('SIN_CONEXION')
+  expect(await cola.listar(7)).toHaveLength(1)
+  expect(trk.put).not.toHaveBeenCalled()
 })

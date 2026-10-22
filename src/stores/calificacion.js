@@ -38,12 +38,29 @@ const esSesionDe = (juradoId) =>
   String(useAuthStore().usuario?.id) === String(juradoId) && String(idDelToken(tokenStorage.leer())) === String(juradoId)
 
 const errorLocal = (motivo, message) => Object.assign(new Error(message), { status: 0, motivo, errors: [] })
+const errorSesion = () =>
+  errorLocal('SESION_CAMBIADA', 'La sesión de esta pestaña cambió de jurado. Vuelve a entrar con tu usuario antes de enviar la calificación final.')
+
+// Generación de sesión: reiniciar() la incrementa y el trabajo iniciado antes ya no toca el estado ni programa envíos.
+let generacion = 0
+// Escrituras locales en curso (encolar + programar el autoguardado): finalizar las espera antes de leer IndexedDB.
+const escrituras = new Set()
+const registrarEscritura = (trabajo) => {
+  escrituras.add(trabajo)
+  const fin = () => escrituras.delete(trabajo)
+  trabajo.then(fin, fin)
+  return trabajo
+}
+const esperarEscrituras = async () => {
+  while (escrituras.size) await Promise.allSettled([...escrituras])
+}
 
 export const useCalificacionStore = defineStore('calificacion', {
   // estados: participanteId → 'GUARDANDO' | 'GUARDADO' | 'SIN_CONEXION' | 'ERROR' (indicador por fila, CA5).
   state: () => ({ pendientes: {}, rechazadas: {}, estados: {}, sincronizando: false }),
   actions: {
     reiniciar() {
+      generacion++
       for (const clave of [...temporizadores.keys()]) cancelarTemporizador(clave)
       this.pendientes = {}
       this.rechazadas = {}
@@ -54,35 +71,42 @@ export const useCalificacionStore = defineStore('calificacion', {
     },
     async cargarPendientes(juradoId) {
       const items = await cola.listar(juradoId)
-      const nuevos = Object.fromEntries(items.map((i) => [i.participanteId, i]))
-      // Conserva lo agregado en memoria durante la espera si sigue existiendo en IndexedDB.
-      for (const [pid, previo] of Object.entries(this.pendientes)) {
-        if (nuevos[pid] || String(previo.juradoId) !== String(juradoId)) continue
-        const guardado = await cola.obtener(juradoId, pid)
-        if (guardado) nuevos[pid] = guardado
+      // Fusión sin esperas intermedias: lo anotado en memoria durante la lectura (más nuevo o ausente en ella) se conserva.
+      const actuales = this.pendientes
+      const fusion = {}
+      for (const i of items) fusion[i.participanteId] = i
+      for (const [pid, previo] of Object.entries(actuales)) {
+        if (String(previo.juradoId) !== String(juradoId)) continue
+        if (!fusion[pid] || (previo.encoladaEn || 0) > (fusion[pid].encoladaEn || 0)) fusion[pid] = previo
       }
-      this.pendientes = nuevos
+      this.pendientes = fusion
     },
     // Autoguardado: la fila queda en IndexedDB al instante y se envía una sola vez cuando el jurado hace una pausa.
-    async anotar(juradoId, participanteId, puntajes, esperaMs = ESPERA_AUTOGUARDADO_MS) {
+    anotar(juradoId, participanteId, puntajes, esperaMs = ESPERA_AUTOGUARDADO_MS) {
       const clave = `${juradoId}:${participanteId}`
+      const gen = generacion
       this.marcar(participanteId, 'GUARDANDO')
       this.quitarRechazo(participanteId)
       cancelarTemporizador(clave)
-      const item = await cola.encolar({ juradoId, participanteId, puntajes })
-      this.pendientes = { ...this.pendientes, [item.participanteId]: item }
-      cancelarTemporizador(clave)
-      temporizadores.set(clave, setTimeout(() => {
-        temporizadores.delete(clave)
-        this.intentar(juradoId, participanteId).catch(() => {})
-      }, esperaMs))
-      return item
+      return registrarEscritura((async () => {
+        const item = await cola.encolar({ juradoId, participanteId, puntajes })
+        if (gen !== generacion) return item
+        this.pendientes = { ...this.pendientes, [item.participanteId]: item }
+        cancelarTemporizador(clave)
+        temporizadores.set(clave, setTimeout(() => {
+          temporizadores.delete(clave)
+          this.intentar(juradoId, participanteId).catch(() => {})
+        }, esperaMs))
+        return item
+      })())
     },
     async guardarBorrador(juradoId, participanteId, puntajes) {
+      const gen = generacion
       cancelarTemporizador(`${juradoId}:${participanteId}`)
       this.marcar(participanteId, 'GUARDANDO')
       this.quitarRechazo(participanteId)
-      const item = await cola.encolar({ juradoId, participanteId, puntajes })
+      const item = await registrarEscritura(cola.encolar({ juradoId, participanteId, puntajes }))
+      if (gen !== generacion) return { estado: 'PENDIENTE' }
       this.pendientes = { ...this.pendientes, [item.participanteId]: item }
       return this.intentar(juradoId, participanteId)
     },
@@ -90,7 +114,11 @@ export const useCalificacionStore = defineStore('calificacion', {
       return enSerie(`${juradoId}:${participanteId}`, () => this._intentar(juradoId, participanteId))
     },
     async _intentar(juradoId, participanteId) {
-      if (!esSesionDe(juradoId)) return { estado: 'PENDIENTE' }
+      if (!esSesionDe(juradoId)) {
+        // La fila sigue en cola (como un 401): se reintenta cuando vuelva la sesión del jurado.
+        this.marcar(participanteId, 'SIN_CONEXION')
+        return { estado: 'PENDIENTE' }
+      }
       const item = await cola.obtener(juradoId, participanteId)
       if (!item) {
         this.olvidar(participanteId)
@@ -154,18 +182,35 @@ export const useCalificacionStore = defineStore('calificacion', {
         clearInterval(temporizador)
       }
     },
-    // CA6: requiere conexión. Primero deja en el servidor lo que la categoría tenga pendiente; si algo no se pudo
-    // guardar, no se envía nada (el servidor decide con sus borradores: todo o nada).
+    // CA6: requiere conexión. Primero deja en el servidor lo que la categoría tenga en IndexedDB (la fuente de verdad,
+    // no la memoria); si algo no se pudo guardar, no se envía nada (el servidor decide con sus borradores: todo o nada).
     async finalizar(juradoId, categoriaId, participanteIds) {
-      const ids = participanteIds.map(String)
+      // Guarda de sesión ANTES de todo: el POST iría con el token de esta pestaña (localStorage compartido).
+      if (!esSesionDe(juradoId)) throw errorSesion()
+      const ids = new Set(participanteIds.map(String))
+      const deLaCategoria = (items) => items.filter((i) => ids.has(String(i.participanteId)))
+      // Las anotaciones en curso terminan de escribirse (y programar su envío) antes de cancelar y leer la cola.
+      await esperarEscrituras()
       for (const pid of ids) cancelarTemporizador(`${juradoId}:${pid}`)
-      await Promise.all(ids.filter((pid) => this.pendientes[pid]).map((pid) => this.intentar(juradoId, pid)))
-      if (ids.some((pid) => this.pendientes[pid])) {
+      const enCola = deLaCategoria(await cola.listar(juradoId))
+      const resultados = await Promise.all(enCola.map((i) => this.intentar(juradoId, i.participanteId)))
+      const rechazo = resultados.find((r) => r.estado === 'RECHAZADA')
+      if (rechazo) {
+        const e = rechazo.error || {}
+        throw Object.assign(new Error(mensajeDeError(e)), {
+          status: e.status ?? 0,
+          motivo: e.motivo || 'BORRADOR_RECHAZADO',
+          errors: e.errors || []
+        })
+      }
+      if (!esSesionDe(juradoId)) throw errorSesion()
+      if (deLaCategoria(await cola.listar(juradoId)).length) {
         throw errorLocal('SIN_CONEXION', 'Hay puntajes sin guardar en el servidor. Revisa la conexión e inténtalo de nuevo.')
       }
-      if (ids.some((pid) => this.rechazadas[pid])) {
+      if ([...ids].some((pid) => this.rechazadas[pid])) {
         throw errorLocal('BORRADOR_RECHAZADO', 'Corrige las filas marcadas con error antes de enviar la calificación final.')
       }
+      if (!esSesionDe(juradoId)) throw errorSesion()
       const { data } = await trk.post('/calificaciones/finalizar', { categoria_id: Number(categoriaId) })
       return data
     }
