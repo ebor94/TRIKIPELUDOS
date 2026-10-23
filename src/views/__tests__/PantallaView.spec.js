@@ -68,6 +68,7 @@ test('diseño del evento: fondo, logo, patrocinadores y etiqueta "En pasarela"',
   expect(w.get('[data-test="logo-texto"]').attributes('src')).toContain('marca/logo-texto.webp')
   expect(w.get('[data-test="patrocinadores"]').attributes('src')).toContain('marca/patrocinadores.webp')
   expect(w.get('[data-test="etiqueta"]').text()).toBe('En pasarela')
+  expect(w.get('[data-test="calabaza"]').attributes('src')).toContain('marca/calabaza.webp')
 })
 
 test('modo ganadores: podio 2-1-3 con trofeos, nombre y puntaje, y la categoría bajo el logo', async () => {

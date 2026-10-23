@@ -8,3 +8,4 @@ export const PATROCINADORES = `${base}marca/patrocinadores.webp`
 export const ALT_PATROCINADORES = 'Más Vida para ti · Los Olivos, un homenaje al amor'
 export const TROFEO = { 1: `${base}marca/trofeo-1.webp`, 2: `${base}marca/trofeo-2.webp`, 3: `${base}marca/trofeo-3.webp` }
 export const LOGO_TEXTO = `${base}marca/logo-texto.webp`
+export const CALABAZA = `${base}marca/calabaza.webp`

@@ -7,7 +7,7 @@ import { useTiempoReal } from '@/composables/useTiempoReal'
 import FotoMascota from '@/components/FotoMascota.vue'
 import PodioPantalla from '@/components/PodioPantalla.vue'
 import PortadaEvento from '@/components/PortadaEvento.vue'
-import { LOGO_TEXTO, ALT_LOGO, FONDO_PANTALLA, PATROCINADORES, ALT_PATROCINADORES } from '@/utils/marca'
+import { LOGO_TEXTO, ALT_LOGO, FONDO_PANTALLA, PATROCINADORES, ALT_PATROCINADORES, CALABAZA } from '@/utils/marca'
 
 const evento = useEventoStore()
 const p = computed(() => evento.enPasarela)
@@ -58,7 +58,7 @@ useTiempoReal({
       <p v-if="enRanking" data-test="categoria-ranking" class="contorno-oscuro absolute left-[35px] top-[195px] max-w-[560px] font-cartel text-[46px] leading-tight text-calabaza-400">{{ evento.ranking.categoria.nombre }}</p>
       <img data-test="patrocinadores" :src="PATROCINADORES" :alt="ALT_PATROCINADORES" class="absolute left-[628px] top-0 w-[812px]" />
       <div v-if="etiqueta" class="absolute right-[48px] top-[30px] flex items-center gap-3">
-        <span class="text-[56px] leading-none" aria-hidden="true">🎃</span>
+        <img data-test="calabaza" :src="CALABAZA" alt="" class="h-[62px] w-auto drop-shadow-lg" />
         <span data-test="etiqueta" class="contorno-oscuro rounded-xl border-2 border-calabaza-200/80 px-5 py-1 font-cartel text-[46px] leading-tight text-calabaza-400">{{ etiqueta }}</span>
       </div>
 
