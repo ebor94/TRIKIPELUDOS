@@ -55,3 +55,33 @@ test('indicador por fila Guardado / Guardando… / Sin conexión (CA5)', () => {
   expect(w.get('[data-test="estado-b"]').text()).toBe('Guardando…')
   expect(w.get('[data-test="estado-c"]').text()).toBe('Sin conexión')
 })
+
+test('botones − y + de 44 px junto a cada casilla: suman/restan 1 dentro de 0..máximo (vacío cuenta como 0)', async () => {
+  const w = montar({ filas: [fila('t', { 1: 8, 2: null })] })
+  const mas = w.get('[data-test="mas-t-1"]')
+  const menos = w.get('[data-test="menos-t-2"]')
+  expect(mas.classes()).toEqual(expect.arrayContaining(['h-11', 'w-11']))
+  await mas.trigger('click')
+  expect(w.emitted('cambiar').at(-1)[0]).toEqual({ participanteId: 't', criterioId: 1, valor: 9 })
+  await w.setProps({ filas: [fila('t', { 1: 9, 2: null })] })
+  await w.get('[data-test="mas-t-1"]').trigger('click')
+  expect(w.emitted('cambiar').at(-1)[0].valor).toBe(9) // tope en el máximo
+  await menos.trigger('click')
+  expect(w.emitted('cambiar').at(-1)[0]).toEqual({ participanteId: 't', criterioId: 2, valor: 0 })
+  await w.get('[data-test="mas-t-2"]').trigger('click')
+  expect(w.emitted('cambiar').at(-1)[0].valor).toBe(1)
+})
+
+test('los botones − y + se deshabilitan en filas finales o con la matriz deshabilitada', () => {
+  const w = montar({ filas: [fila('t', {}, { esFinal: true }), fila('k')], deshabilitada: false })
+  expect(w.get('[data-test="mas-t-1"]').attributes('disabled')).toBeDefined()
+  expect(w.get('[data-test="mas-k-1"]').attributes('disabled')).toBeUndefined()
+  const w2 = montar({ deshabilitada: true })
+  expect(w2.get('[data-test="menos-t-1"]').attributes('disabled')).toBeDefined()
+})
+
+test('tocar la foto de una fila pide verla ampliada', async () => {
+  const w = montar()
+  await w.get('[data-test="ver-foto-t"]').trigger('click')
+  expect(w.emitted('ver-foto')[0][0]).toMatchObject({ id: 't', mascota_nombre: 'T' })
+})

@@ -8,7 +8,7 @@ import { useTiempoReal } from '@/composables/useTiempoReal'
 import { mensajeDeError } from '@/utils/errores'
 import { totalDe, completa, puestosTentativos, aLista, aMapa } from '@/utils/matriz'
 import BarraSuperior from '@/components/BarraSuperior.vue'
-import FichaMascota from '@/components/FichaMascota.vue'
+import FotoMascota from '@/components/FotoMascota.vue'
 import MatrizCalificacion from '@/components/MatrizCalificacion.vue'
 
 const auth = useAuthStore()
@@ -31,6 +31,18 @@ const MENSAJE_SESION_CAMBIADA =
 
 // CA1/CA2: el jurado ve foto, nombre, disfraz y categoría; nunca datos del responsable.
 const enPasarela = computed(() => (evento.enPasarela ? { ...evento.enPasarela, responsable_primer_nombre: null } : null))
+const ESPECIE = { PERRO: 'Perro', GATO: 'Gato' }
+const SEXO = { MACHO: 'Macho', HEMBRA: 'Hembra' }
+// Datos de la mascota para el jurado (nunca del responsable).
+const datosMascota = (p) => [
+  ESPECIE[p.especie] || p.especie,
+  p.raza,
+  p.edad_texto ? `Edad: ${p.edad_texto}` : null,
+  SEXO[p.sexo]
+].filter(Boolean)
+// Visor de foto ampliada (desde la tarjeta o la matriz).
+const fotoAmpliada = ref(null)
+const verFoto = (p) => { fotoAmpliada.value = { ...p, responsable_primer_nombre: null } }
 const criterios = computed(() => (matriz.value ? matriz.value.criterios : []))
 const filas = computed(() => (matriz.value ? matriz.value.filas : []).map((f) => {
   const esFinal = f.final && f.final.estado === 'FINAL'
@@ -148,7 +160,7 @@ onBeforeUnmount(() => detenerSync && detenerSync())
 <template>
   <div class="min-h-screen pb-28">
     <BarraSuperior titulo="Jurado" />
-    <main class="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+    <main class="mx-auto flex max-w-screen-xl flex-col gap-4 p-4">
       <p v-if="error || errorCarga" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert" data-test="error">{{ error || errorCarga }}</p>
       <p v-if="aviso" class="rounded-xl bg-green-100 p-3 text-green-900" role="status" data-test="aviso">{{ aviso }}</p>
       <div v-if="rechazadas.length" data-test="rechazadas" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">
@@ -158,9 +170,17 @@ onBeforeUnmount(() => detenerSync && detenerSync())
         </ul>
       </div>
 
-      <section v-if="enPasarela" data-test="en-pasarela" class="tarjeta flex flex-col gap-3 border-2 border-calabaza-500 sm:flex-row">
-        <p class="text-sm font-bold uppercase text-calabaza-800">🎃 En pasarela ahora</p>
-        <FichaMascota :participante="enPasarela" />
+      <section v-if="enPasarela" data-test="en-pasarela" class="tarjeta flex items-start gap-4 border-2 border-calabaza-500 p-3">
+        <button type="button" data-test="foto-pasarela" class="w-24 shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-calabaza-500" :aria-label="`Ampliar foto de ${enPasarela.mascota_nombre}`" @click="verFoto(enPasarela)">
+          <FotoMascota :participante="enPasarela" clase="aspect-[4/5] w-24 rounded-xl" />
+        </button>
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <p class="text-xs font-bold uppercase tracking-wide text-calabaza-800">🎃 En pasarela ahora</p>
+          <h2 class="truncate text-2xl font-extrabold leading-tight text-morado-800">{{ enPasarela.mascota_nombre }}</h2>
+          <p v-if="enPasarela.disfraz_nombre" class="font-semibold text-calabaza-800">Disfraz: «{{ enPasarela.disfraz_nombre }}»</p>
+          <p v-if="datosMascota(enPasarela).length" class="text-sm text-morado-900">{{ datosMascota(enPasarela).join(' · ') }}</p>
+          <p v-if="enPasarela.categoria" class="text-sm text-morado-700">{{ enPasarela.categoria.nombre }}<template v-if="enPasarela.orden_pasarela"> · Turno {{ enPasarela.orden_pasarela }}</template></p>
+        </div>
       </section>
       <p v-else class="tarjeta text-center">Aún no hay mascota en pasarela.</p>
 
@@ -180,6 +200,7 @@ onBeforeUnmount(() => detenerSync && detenerSync())
           :criterios="criterios" :filas="filas" :puestos="puestos" :estados="cola.estados"
           :en-pasarela-id="evento.enPasarela ? evento.enPasarela.id : null" :deshabilitada="!abierta || enviando"
           @cambiar="alCambiar"
+          @ver-foto="verFoto"
         />
       </template>
     </main>
@@ -202,6 +223,18 @@ onBeforeUnmount(() => detenerSync && detenerSync())
           <button class="btn-claro min-h-tactil flex-1" :disabled="enviando" @click="confirmando = false">Cancelar</button>
           <button class="btn-primario min-h-tactil flex-1" data-test="confirmar-final" :disabled="enviando" @click="confirmarEnvio">Confirmar envío</button>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="fotoAmpliada" role="dialog" aria-modal="true" :aria-label="`Foto de ${fotoAmpliada.mascota_nombre}`" data-test="visor-foto"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4" @click.self="fotoAmpliada = null"
+    >
+      <div class="flex max-h-full w-full max-w-lg flex-col items-center gap-3">
+        <FotoMascota :participante="fotoAmpliada" clase="aspect-[4/5] max-h-[75vh] w-auto max-w-full rounded-2xl bg-black" />
+        <p class="text-center text-xl font-bold text-white">{{ fotoAmpliada.mascota_nombre }}<template v-if="fotoAmpliada.disfraz_nombre"> · «{{ fotoAmpliada.disfraz_nombre }}»</template></p>
+        <p v-if="datosMascota(fotoAmpliada).length" class="text-center text-white/90">{{ datosMascota(fotoAmpliada).join(' · ') }}</p>
+        <button type="button" class="btn-claro min-w-[8rem]" data-test="cerrar-visor" @click="fotoAmpliada = null">Cerrar</button>
       </div>
     </div>
   </div>

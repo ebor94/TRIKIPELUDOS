@@ -299,3 +299,24 @@ test('la barra fija queda sobre las celdas sticky y el diálogo sobre la barra',
   await w.get('[data-test="enviar-final"]').trigger('click')
   expect(w.get('[data-test="confirmacion"]').classes()).toContain('z-30')
 })
+
+test('la tarjeta En pasarela es compacta y muestra especie, raza, edad, sexo, disfraz y categoría', async () => {
+  respuesta = matrizBase()
+  Object.assign(toby, { especie: 'PERRO', raza: 'Criollo', edad_texto: '3 años', sexo: 'MACHO', disfraz_nombre: 'Rambo' })
+  const w = await montar()
+  const tarjeta = w.get('[data-test="en-pasarela"]')
+  for (const texto of ['Perro', 'Criollo', '3 años', 'Macho', 'Rambo', 'Pequeños']) expect(tarjeta.text()).toContain(texto)
+  expect(tarjeta.get('[data-test="foto-pasarela"]').classes()).toEqual(expect.arrayContaining(['w-24']))
+  expect(tarjeta.text()).not.toContain('Ana')
+})
+
+test('la foto de la matriz o de la tarjeta se amplía en un visor y se cierra', async () => {
+  const w = await montar()
+  await w.get('[data-test="ver-foto-k"]').trigger('click')
+  const visor = w.get('[data-test="visor-foto"]')
+  expect(visor.text()).toContain('Kira')
+  await w.get('[data-test="cerrar-visor"]').trigger('click')
+  expect(w.find('[data-test="visor-foto"]').exists()).toBe(false)
+  await w.get('[data-test="foto-pasarela"]').trigger('click')
+  expect(w.get('[data-test="visor-foto"]').text()).toContain('Toby')
+})
