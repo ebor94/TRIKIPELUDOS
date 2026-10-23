@@ -61,22 +61,17 @@ TRIKIPELUDOS es un concurso de disfraces de mascotas organizado por Serfunorte L
 | `FELINOS` | Felinos | Individual |
 | `FAMILIAR` | Disfraz familiar (mascota + acompañante/s) | Familiar |
 
-### 3.2 Rúbrica INDIVIDUAL (total 100)
-| Criterio | Qué se valora | Máx |
-|---|---|---|
-| Creatividad | Idea novedosa y diferenciada | 35 |
-| Seguridad | Comodidad y libertad de movimiento de la mascota | 30 |
-| Elaboración | Calidad, detalle y presentación del disfraz | 20 |
-| Pasarela | Actitud, desenvolvimiento y conexión con el público | 15 |
+### 3.2 Rúbrica (INDIVIDUAL y FAMILIAR, total 100) — v2, confirmada por la organización (2026-10-23)
+Ambas rúbricas tienen los mismos criterios (migración `007_rubrica_v2.sql`; reemplaza la v1 de 4 y 5 criterios).
 
-### 3.3 Rúbrica FAMILIAR (total 100)
 | Criterio | Qué se valora | Máx |
 |---|---|---|
-| Creatividad | Idea novedosa del conjunto | 30 |
-| Seguridad | Bienestar, comodidad y movilidad de la mascota | 25 |
-| Elaboración | Calidad y presentación visual del conjunto | 20 |
-| Pasarela | Actitud y puesta en escena | 10 |
-| Integración familiar | Coherencia entre los disfraces de la familia y la mascota | 15 |
+| Creatividad | Creatividad, elaboración y originalidad del disfraz | 50 |
+| Bienestar | Seguridad, comodidad y bienestar de la mascota; un disfraz que le permita movilidad | 30 |
+| Pasarela | Participación, vínculo con el público y desarrollo de la pasarela de la mascota y su tutor o la familia | 20 |
+
+### 3.3 (Retirada en v2) Rúbrica FAMILIAR propia
+La categoría familiar usa la misma tabla de §3.2. La 007 borró las calificaciones, borradores y rankings publicados hechos con la rúbrica anterior; el evento aún no había comenzado.
 
 > Las rúbricas son **datos**, no código: viven en tablas (`rubricas`, `criterios`) y se cargan por seed. Cambiar un puntaje máximo no debe requerir desplegar.
 
@@ -85,7 +80,7 @@ TRIKIPELUDOS es un concurso de disfraces de mascotas organizado por Serfunorte L
 - **R2.** Puntaje de un jurado = suma de sus criterios (0–100).
 - **R3.** **Puntaje final** de la mascota = **promedio** de los puntajes de los jurados que la calificaron, redondeado a 2 decimales. (Promedio, no suma, para que una calificación faltante no hunda a un participante.)
 - **R4.** Una mascota entra al ranking solo si tiene calificación **enviada** de **todos** los jurados activos (usuarios con rol `TRK_JURADO` y `activo = 1`); si no, aparece como "Incompleta" con el número de calificaciones recibidas y queda fuera de los puestos premiados.
-- **R5. Desempate** (en orden): mayor promedio en *Creatividad* → mayor promedio en *Seguridad* (prioriza el bienestar animal) → decisión manual del admin (campo `desempate_manual`, menor valor = mejor puesto). El orden de criterios para desempatar sale de `trk_criterios.peso_desempate` (dato, no código).
+- **R5. Desempate** (en orden): mayor promedio en *Creatividad* → mayor promedio en *Bienestar* (prioriza el bienestar animal) → decisión manual del admin (campo `desempate_manual`, menor valor = mejor puesto). El orden de criterios para desempatar sale de `trk_criterios.peso_desempate` (dato, no código).
 - **R6.** El ranking se calcula **por categoría**. Se destacan los primeros `trk_categorias.puestos_premiados` (3 por defecto, configurable por el admin; §14.3). Un empate no resuelto se marca "empate sin resolver" cuando afecta un puesto premiado o el borde (puesto N contra N+1).
 - **R7.** Una vez enviada, la calificación de un jurado queda **bloqueada**. Solo el admin puede desbloquearla (queda registro en auditoría).
 - **R8.** Un jurado no ve las calificaciones de otros jurados ni el ranking hasta que el admin lo publique.

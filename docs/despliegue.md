@@ -76,3 +76,17 @@ Genera una carpeta `trikipeludos-<fecha>` (permisos 700) con `trk_tablas.sql`, `
 2. Frontend: fusionar `feature/trk-matriz` en `main` de `ebor94/TRIKIPELUDOS`, `npm ci && npm run build` y `rsync` de `dist/` (igual que §3).
 3. Orden: **backend primero** (la nueva interfaz llama a `TRK-CAL-004/005/006`; la anterior sigue funcionando con el backend nuevo porque `TRK-CAL-002` no cambió).
 4. Si algún celular de jurado tiene calificaciones v2 pendientes en su cola local, al abrir la versión nueva se guardan como borrador de esa fila y el jurado las confirma con "Enviar calificación final".
+
+## 7. Actualización rúbrica v2 (2026-10-23)
+
+Criterios confirmados para **todas** las categorías: Creatividad 50, Bienestar 30, Pasarela 20 (spec §3.2).
+
+1. Backend: `main` de `ebor94/mantix`; en `srv-backend`, desplegar como siempre y luego `npm run trk:setup` → debe listar `✅ 007_rubrica_v2.sql`.
+2. **La 007 borra** las calificaciones, borradores, rankings publicados, desempates manuales y el modo RANKING de la pantalla (eran de la rúbrica anterior; aprobado porque el evento no ha comenzado). Los participantes, fotos y usuarios no se tocan. Hacer un respaldo antes si se quiere conservar lo de prueba (`respaldo.sh`, §5).
+3. Verificar:
+   ```sql
+   SELECT r.codigo, c.codigo, c.puntaje_max, c.peso_desempate
+   FROM trk_criterios c JOIN trk_rubricas r ON r.id = c.rubrica_id ORDER BY r.codigo, c.orden;
+   -- 6 filas: por rúbrica CREATIVIDAD 50 (1), BIENESTAR 30 (2), PASARELA 20 (NULL)
+   ```
+4. Frontend: no requiere despliegue (la matriz lee criterios y máximos de la API). Si un celular de jurado tenía borradores sin enviar con criterios viejos, el servidor los rechaza (criterio ajeno) y la fila queda vacía para anotarla de nuevo.
