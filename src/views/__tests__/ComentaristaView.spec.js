@@ -10,7 +10,7 @@ import { trk } from '@/services/api'
 import { useTiempoReal } from '@/composables/useTiempoReal'
 import ComentaristaView from '@/views/ComentaristaView.vue'
 
-const CATS = [{ id: 1, codigo: 'PEQ_MED', nombre: 'Pequeños' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes' }]
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes' }]
 const cola = [
   { id: 'a', mascota_nombre: 'Canela', estado: 'PRESENTE', categoria_id: 1, responsable_primer_nombre: 'Laura' },
   { id: 'b', mascota_nombre: 'Rocky', estado: 'PRESENTE', categoria_id: 1, responsable_primer_nombre: 'Pedro' },

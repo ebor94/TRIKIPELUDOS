@@ -90,3 +90,19 @@ Criterios confirmados para **todas** las categorías: Creatividad 50, Bienestar 
    -- 6 filas: por rúbrica CREATIVIDAD 50 (1), BIENESTAR 30 (2), PASARELA 20 (NULL)
    ```
 4. Frontend: no requiere despliegue (la matriz lee criterios y máximos de la API). Si un celular de jurado tenía borradores sin enviar con criterios viejos, el servidor los rechaza (criterio ajeno) y la fila queda vacía para anotarla de nuevo.
+
+## 8. Categorías v2 (2026-10-23)
+
+Categorías aprobadas: Caninos pequeños, Caninos medianos (nueva), Caninos grandes, Felinos y Disfraz familiar (spec §3.1).
+
+1. Backend: fusionar `feature/trk-categorias-v2` en `main` de `ebor94/mantix`; en `srv-backend`, desplegar como siempre y luego `npm run trk:setup` → debe listar `✅ 008_categorias_v2.sql`. La 008 **renombra** `PEQ_MED` a `PEQUENOS` (mismo id: participantes, fotos y calificaciones intactos) y crea `MEDIANOS`. Verificar:
+   ```sql
+   SELECT c.orden, c.codigo, c.nombre, r.codigo AS rubrica FROM trk_categorias c JOIN trk_rubricas r ON r.id = c.rubrica_id ORDER BY c.orden;
+   -- 1 PEQUENOS, 2 MEDIANOS, 3 GRANDES, 4 FELINOS (INDIVIDUAL) y 5 FAMILIAR (FAMILIAR)
+   ```
+2. Frontend: fusionar `feature/trk-categorias-v2` en `main` de `ebor94/TRIKIPELUDOS`, `npm ci && npm run build` y `rsync` de `dist/` (igual que §3). Las pantallas leen las categorías de la API.
+3. **Reimportar el CSV** (Admin → Importar) con la hoja actualizada:
+   - Las mascotas **sin calificaciones** (y que no están en pasarela ni presentadas) se mueven solas a su nueva categoría.
+   - Las **calificadas** (o en pasarela/presentadas) quedan como **propuesta**: confirmarlas en Admin → Participantes (al confirmar se borran sus calificaciones porque cambia la categoría).
+   - Al confirmar, la importación muestra "N cambiaron de categoría · M quedaron como propuesta para confirmar en Participantes".
+   - Filas que aún digan "Perros pequeños y medianos" entran como Caninos pequeños con la advertencia "revisa si es mediano" y el botón para usar Caninos medianos.

@@ -11,7 +11,7 @@ import { useTiempoReal } from '@/composables/useTiempoReal'
 import { descargarBlob } from '@/utils/descargas'
 import RankingView from '@/views/admin/RankingView.vue'
 
-const CATS = [{ id: 1, codigo: 'PEQ_MED', nombre: 'Pequeños', abierta: true, ranking_publicado: false, puestos_premiados: 3 }]
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', abierta: true, ranking_publicado: false, puestos_premiados: 3 }]
 const RANKING = {
   categoria: CATS[0],
   criterios: [{ codigo: 'CREATIVIDAD', nombre: 'Creatividad' }, { codigo: 'SEGURIDAD', nombre: 'Seguridad' }],

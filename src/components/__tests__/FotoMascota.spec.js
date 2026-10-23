@@ -2,7 +2,7 @@ import { test, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import FotoMascota from '@/components/FotoMascota.vue'
 
-const base = { mascota_nombre: 'Canela', especie: 'PERRO', categoria: { codigo: 'PEQ_MED' } }
+const base = { mascota_nombre: 'Canela', especie: 'PERRO', categoria: { codigo: 'PEQUENOS' } }
 
 test('usa la foto oficial si existe', () => {
   const w = mount(FotoMascota, { props: { participante: { ...base, foto_url: '/uploads/trk/fotos/a.jpg', foto_inscripcion_url: 'https://x/y.jpg' } } })

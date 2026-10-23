@@ -16,7 +16,7 @@ import JuradoView from '@/views/JuradoView.vue'
 
 // Máximos ficticios (los reales vienen de la API).
 const CRITERIOS = [{ id: 1, codigo: 'A', nombre: 'Creatividad', puntaje_max: 9, orden: 1 }, { id: 2, codigo: 'B', nombre: 'Seguridad', puntaje_max: 8, orden: 2 }]
-const CATS = [{ id: 1, codigo: 'PEQ_MED', nombre: 'Pequeños', abierta: true }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos', abierta: true }]
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', abierta: true }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos', abierta: true }]
 const toby = { id: 't', mascota_nombre: 'Toby', estado: 'EN_PASARELA', categoria_id: 1, categoria: { id: 1, nombre: 'Pequeños' }, responsable_primer_nombre: 'Ana' }
 const kira = { id: 'k', mascota_nombre: 'Kira', estado: 'PRESENTADO', categoria_id: 1 }
 const SIN_FINAL = { estado: null, total: null, puntajes: null }

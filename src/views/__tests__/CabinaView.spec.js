@@ -14,7 +14,7 @@ import { trk } from '@/services/api'
 import { comprimirImagen } from '@/utils/imagen'
 import CabinaView from '@/views/CabinaView.vue'
 
-const CATEGORIAS = [{ id: 1, codigo: 'PEQ_MED', nombre: 'Caninos pequeños y medianos' }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos' }]
+const CATEGORIAS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Caninos pequeños' }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos' }]
 const canela = { id: 'p1', mascota_nombre: 'Canela', responsable_nombre: 'Laura Gómez', responsable_telefono: '3001112233', estado: 'INSCRITO', categoria_id: 1, categoria: CATEGORIAS[0], especie: 'PERRO', disfraz_nombre: 'Bruja', foto_url: null }
 
 beforeEach(() => {

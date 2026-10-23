@@ -74,13 +74,13 @@ test('diseño del evento: fondo, logo, patrocinadores y etiqueta "En pasarela"',
 test('modo ganadores: podio 2-1-3 con trofeos, nombre y puntaje, y la categoría bajo el logo', async () => {
   const fila = (id, nombre, puesto, puntaje) => ({ participante_id: id, mascota_nombre: nombre, puesto, puntaje_final: puntaje, premiado: true, completa: true, participante: { id, mascota_nombre: nombre } })
   trk.get.mockResolvedValue({ data: {
-    modo_pantalla: 'RANKING', categoria_pantalla: { nombre: 'Caninos pequeños y medianos' }, en_pasarela: null,
-    ranking: { categoria: { nombre: 'Caninos pequeños y medianos', puestos_premiados: 3 }, filas: [fila('c', 'Caramelo', 1, 98), fila('d', 'Dalila', 2, 77), fila('a', 'Ares', 3, 58)] }
+    modo_pantalla: 'RANKING', categoria_pantalla: { nombre: 'Caninos pequeños' }, en_pasarela: null,
+    ranking: { categoria: { nombre: 'Caninos pequeños', puestos_premiados: 3 }, filas: [fila('c', 'Caramelo', 1, 98), fila('d', 'Dalila', 2, 77), fila('a', 'Ares', 3, 58)] }
   } })
   const w = mount(PantallaView)
   await flushPromises()
   expect(w.get('[data-test="etiqueta"]').text()).toBe('Ganadores')
-  expect(w.get('[data-test="categoria-ranking"]').text()).toBe('Caninos pequeños y medianos')
+  expect(w.get('[data-test="categoria-ranking"]').text()).toBe('Caninos pequeños')
   const puestos = w.findAll('[data-test="podio"] [data-puesto]')
   expect(puestos.map((p) => p.attributes('data-puesto'))).toEqual(['2', '1', '3'])
   expect(puestos[1].get('img[data-test="trofeo"]').attributes('src')).toContain('marca/trofeo-1.webp')

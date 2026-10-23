@@ -13,7 +13,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   trk.get.mockResolvedValue({ data: {
     calificables: 2,
-    categorias: [{ id: 1, codigo: 'PEQ_MED', nombre: 'Pequeños', abierta: true, ranking_publicado: false, total: 2, por_estado: { INSCRITO: 0, PRESENTE: 0, EN_PASARELA: 1, PRESENTADO: 1, AUSENTE: 0 } }],
+    categorias: [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', abierta: true, ranking_publicado: false, total: 2, por_estado: { INSCRITO: 0, PRESENTE: 0, EN_PASARELA: 1, PRESENTADO: 1, AUSENTE: 0 } }],
     jurados: [{ id: 5, nombre: 'J1', activo: true, calificadas: 1, pendientes: 1 }]
   } })
 })

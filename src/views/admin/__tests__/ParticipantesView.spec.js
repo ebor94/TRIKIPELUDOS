@@ -7,7 +7,7 @@ vi.mock('@/services/api', () => ({ api: {}, trk: { get: vi.fn(), post: vi.fn(), 
 import { trk } from '@/services/api'
 import ParticipantesView from '@/views/admin/ParticipantesView.vue'
 
-const CATS = [{ id: 1, codigo: 'PEQ_MED', nombre: 'Pequeños' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes' }]
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes' }]
 const thor = { id: 't1', mascota_nombre: 'Thor', responsable_nombre: 'Carlos', responsable_documento: '3040', categoria_id: 2, categoria: CATS[1], categoria_propuesta_id: 1, estado: 'PRESENTADO', advertencias_importacion: [{ codigo: 'POSIBLE_DUPLICADO', mensaje: 'Misma mascota en dos categorías' }], notas_importacion: 'validar categoría' }
 const thor2 = { id: 't2', mascota_nombre: 'THOR', responsable_nombre: 'Carlos', categoria_id: 2, categoria: CATS[1], estado: 'INSCRITO', advertencias_importacion: null }
 

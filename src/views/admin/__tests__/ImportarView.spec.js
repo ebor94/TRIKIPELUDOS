@@ -16,7 +16,7 @@ const vistaPrevia = {
   archivo_nombre: 'inscripciones.csv',
   resumen: { total: 3, ok: 1, con_advertencias: 2, con_errores: 0, grupos_duplicados: 1 },
   filas: [
-    { indice: 0, linea: 2, datos: { mascota_nombre: 'Rocky', responsable_nombre: 'Pedro', categoria_codigo: 'FELINOS' }, advertencias: [{ codigo: 'ESPECIE_CATEGORIA_INCOHERENTE', mensaje: 'Perro inscrito en FELINOS', sugerencia: 'PEQ_MED' }], errores: [], grupo_duplicado: null, conservar_por_defecto: true },
+    { indice: 0, linea: 2, datos: { mascota_nombre: 'Rocky', responsable_nombre: 'Pedro', categoria_codigo: 'FELINOS' }, advertencias: [{ codigo: 'ESPECIE_CATEGORIA_INCOHERENTE', mensaje: 'Perro inscrito en FELINOS', sugerencia: 'PEQUENOS' }], errores: [], grupo_duplicado: null, conservar_por_defecto: true },
     { indice: 1, linea: 3, datos: { mascota_nombre: 'Thor', responsable_nombre: 'Carlos', categoria_codigo: 'GRANDES' }, advertencias: [{ codigo: 'POSIBLE_DUPLICADO', mensaje: 'Misma mascota' }], errores: [], grupo_duplicado: 'dup-1', conservar_por_defecto: true },
     { indice: 2, linea: 4, datos: { mascota_nombre: 'THOR', responsable_nombre: 'Carlos', categoria_codigo: 'FAMILIAR' }, advertencias: [{ codigo: 'POSIBLE_DUPLICADO', mensaje: 'Misma mascota' }], errores: [], grupo_duplicado: 'dup-1', conservar_por_defecto: false }
   ]
@@ -26,7 +26,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   trk.get.mockResolvedValue({ data: [
-    { id: 1, codigo: 'PEQ_MED', nombre: 'Caninos pequeños y medianos' }, { id: 2, codigo: 'GRANDES', nombre: 'Caninos grandes' },
+    { id: 1, codigo: 'PEQUENOS', nombre: 'Caninos pequeños' }, { id: 5, codigo: 'MEDIANOS', nombre: 'Caninos medianos' },
+    { id: 2, codigo: 'GRANDES', nombre: 'Caninos grandes' },
     { id: 3, codigo: 'FELINOS', nombre: 'Felinos' }, { id: 4, codigo: 'FAMILIAR', nombre: 'Familiar' }
   ] })
 })
@@ -80,9 +81,30 @@ test('confirma enviando decisiones: sugerencia aceptada, fila del duplicado y om
   await flushPromises()
   expect(trk.post).toHaveBeenLastCalledWith('/import/confirm', {
     preview_token: 'f'.repeat(64),
-    decisiones: { omitir: [], conservar: { 'dup-1': 2 }, categoria: { 0: 'PEQ_MED' } }
+    decisiones: { omitir: [], conservar: { 'dup-1': 2 }, categoria: { 0: 'PEQUENOS' } }
   })
   expect(w.text()).toContain('2 creados')
+})
+
+test('tras confirmar muestra cuántas mascotas cambiaron de categoría y cuántas quedaron como propuesta', async () => {
+  const w = mount(ImportarView)
+  await flushPromises()
+  await cargarArchivo(w)
+  trk.post.mockResolvedValueOnce({ data: { creados: 0, actualizados: 3, omitidos: 0, recategorizados: 2, propuestas: 1 } })
+  await w.get('[data-test="confirmar"]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test="recategorizacion"]').text())
+    .toBe('2 cambiaron de categoría · 1 quedaron como propuesta para confirmar en Participantes')
+})
+
+test('sin cambios de categoría no muestra la línea de recategorización', async () => {
+  const w = mount(ImportarView)
+  await flushPromises()
+  await cargarArchivo(w)
+  trk.post.mockResolvedValueOnce({ data: { creados: 2, actualizados: 0, omitidos: 1, recategorizados: 0, propuestas: 0 } })
+  await w.get('[data-test="confirmar"]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test="recategorizacion"]').exists()).toBe(false)
 })
 
 test('omitir una fila la excluye del conteo y envía su índice en decisiones.omitir', async () => {

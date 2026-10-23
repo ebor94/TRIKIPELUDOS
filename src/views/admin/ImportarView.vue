@@ -16,6 +16,12 @@ const categoriaFinal = (f) => decisiones.categoria[f.indice] || f.datos.categori
 const conservada = (f) => !f.grupo_duplicado || Number(decisiones.conservar[f.grupo_duplicado]) === f.indice
 const seImporta = (f) => !decisiones.omitir.has(f.indice) && conservada(f) && Boolean(categoriaFinal(f))
   && Boolean(f.datos.mascota_nombre) && Boolean(f.datos.responsable_nombre)
+// Categorías v2: reimportar mueve a las mascotas sin calificar y deja como propuesta (Admin → Participantes) el resto.
+const recategorizacion = computed(() => {
+  const { recategorizados = 0, propuestas = 0 } = resultado.value || {}
+  if (!recategorizados && !propuestas) return ''
+  return `${recategorizados} cambiaron de categoría · ${propuestas} quedaron como propuesta para confirmar en Participantes`
+})
 const totalAImportar = computed(() => (vista.value ? vista.value.filas.filter(seImporta).length : 0))
 
 onMounted(() => categorias.cargar().catch((e) => { error.value = mensajeDeError(e) }))
@@ -72,6 +78,7 @@ async function confirmar() {
     <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
     <p v-if="resultado" class="rounded-xl bg-green-100 p-3 text-green-900" role="status">
       Importación lista: {{ resultado.creados }} creados, {{ resultado.actualizados }} actualizados, {{ resultado.omitidos }} omitidos.
+      <span v-if="recategorizacion" data-test="recategorizacion" class="block">{{ recategorizacion }}</span>
     </p>
 
     <label class="tarjeta flex flex-col gap-2">

@@ -53,13 +53,18 @@ TRIKIPELUDOS es un concurso de disfraces de mascotas organizado por Serfunorte L
 
 ## 3. Modelo de evaluación
 
-### 3.1 Categorías
-| Código | Nombre | Tipo de rúbrica |
-|---|---|---|
-| `PEQ_MED` | Caninos pequeños y medianos | Individual |
-| `GRANDES` | Caninos grandes | Individual |
-| `FELINOS` | Felinos | Individual |
-| `FAMILIAR` | Disfraz familiar (mascota + acompañante/s) | Familiar |
+### 3.1 Categorías — v2, aprobada por la organización (2026-10-23)
+Son **datos** en `trk_categorias` (semilla 003 + migración 008), no constantes de código.
+
+| Orden | Código | Nombre | Tipo de rúbrica |
+|---|---|---|---|
+| 1 | `PEQUENOS` | Caninos pequeños | Individual |
+| 2 | `MEDIANOS` | Caninos medianos | Individual |
+| 3 | `GRANDES` | Caninos grandes | Individual |
+| 4 | `FELINOS` | Felinos | Individual |
+| 5 | `FAMILIAR` | Disfraz familiar (mascota + acompañante/s) | Familiar |
+
+> v1 tenía `PEQ_MED` (Caninos pequeños y medianos). La migración 008 la **renombra en sitio** a `PEQUENOS` (mismo id: conserva participantes y calificaciones) y crea `MEDIANOS`; los medianos se reubican reimportando el CSV (§7.1).
 
 ### 3.2 Rúbrica (INDIVIDUAL y FAMILIAR, total 100) — v2, confirmada por la organización (2026-10-23)
 Ambas rúbricas tienen los mismos criterios (migración `007_rubrica_v2.sql`; reemplaza la v1 de 4 y 5 criterios).
@@ -213,7 +218,10 @@ Formato: **HU-n** — historia. *CA* = criterios de aceptación verificables (ba
 | FOTOGRAFÍA PARTICIPANTE | `foto_inscripcion_url` |
 | (columnas sin encabezado con notas) | `notas_importacion` |
 
-Mapeo de categoría: `Perros pequeños y medianos.` → `PEQ_MED`; `Perros grandes.` → `GRANDES`; `Gaticos.` → `FELINOS`; `Disfraz familiar: mascota y acompañante/s.` → `FAMILIAR`.
+Mapeo de categoría (v2, `mapearCategoria` en el backend): texto con "pequeño(s)" (`Perros pequeños.`) → `PEQUENOS`; con "mediano(s)" (`Perros medianos.`) → `MEDIANOS`; `Perros grandes.` → `GRANDES`; `Gaticos.` → `FELINOS`; `Disfraz familiar: mascota y acompañante/s.` → `FAMILIAR`.
+
+- Texto antiguo combinado `Perros pequeños y medianos.` → `PEQUENOS` con advertencia `CATEGORIA_COMBINADA` ("Categoría antigua 'pequeños y medianos': revisa si es mediano", sugerencia `MEDIANOS`) visible en la vista previa. No aplica a gatos (ya reciben la sugerencia `FELINOS`).
+- **Reimportación y categoría.** Si la mascota ya existe y la categoría final de la fila (la decidida en la vista previa o la del CSV) es otra: si no tiene calificaciones, no está `EN_PASARELA`/`PRESENTADO` y no está fusionada, se **mueve** directamente (`orden_pasarela` al final de la nueva categoría si tenía orden, `desempate_manual` a NULL; auditoría `CAMBIAR_CATEGORIA`); si no, queda como **propuesta** (`categoria_propuesta_id`, auditoría `PROPONER_CATEGORIA`) para confirmarla en Admin → Participantes (`TRK-PAR-007`, que avisa del borrado de calificaciones). Los registros fusionados no cambian. La respuesta de `TRK-IMP-002` incluye `recategorizados` y `propuestas`. Foto oficial y estado nunca se sobrescriben.
 
 ### 7.2 Validaciones obligatorias en la vista previa
 Detectadas en los datos reales de la hoja; el importador debe marcarlas como **advertencia** (no bloquean) para que el admin decida:
