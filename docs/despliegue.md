@@ -105,4 +105,7 @@ Categorías aprobadas: Caninos pequeños, Caninos medianos (nueva), Caninos gran
    - Las mascotas **sin calificaciones** (y que no están en pasarela ni presentadas) se mueven solas a su nueva categoría.
    - Las **calificadas** (o en pasarela/presentadas) quedan como **propuesta**: confirmarlas en Admin → Participantes (al confirmar se borran sus calificaciones porque cambia la categoría).
    - Al confirmar, la importación muestra "N cambiaron de categoría · M quedaron como propuesta para confirmar en Participantes".
-   - Filas que aún digan "Perros pequeños y medianos" entran como Caninos pequeños con la advertencia "revisa si es mediano" y el botón para usar Caninos medianos.
+   - Filas que aún digan "Perros pequeños y medianos" muestran la advertencia "revisa si es mediano" y el botón para usar Caninos medianos; si no se elige, la mascota existente no cambia de categoría (las nuevas entran como Caninos pequeños).
+   - Mascotas **PRESENTE** sin calificaciones también pueden moverse con la reimportación: su turno de pasarela pasa al **final** de la nueva categoría. Revisar el orden de pasarela después de importar.
+   - No se mueve directamente (queda como propuesta) si la categoría se cambió a mano antes o si la categoría destino está cerrada o tiene ranking publicado. Para confirmar hacia una categoría cerrada, abrirla primero.
+4. **Ranking publicado:** un snapshot ya publicado conserva el nombre antiguo "Caninos pequeños y medianos" hasta volver a publicarlo. Si `PEQUENOS` tenía ranking publicado, **republicarlo** después de la migración (y después de la reimportación si cambió su lista).
