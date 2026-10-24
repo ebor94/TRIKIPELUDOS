@@ -10,7 +10,7 @@ import { trk } from '@/services/api'
 import { useTiempoReal } from '@/composables/useTiempoReal'
 import ComentaristaView from '@/views/ComentaristaView.vue'
 
-const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes' }]
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', color: '#FF0000' }, { id: 2, codigo: 'GRANDES', nombre: 'Grandes', color: '#FFFF00' }]
 const cola = [
   { id: 'a', mascota_nombre: 'Canela', estado: 'PRESENTE', categoria_id: 1, responsable_primer_nombre: 'Laura' },
   { id: 'b', mascota_nombre: 'Rocky', estado: 'PRESENTE', categoria_id: 1, responsable_primer_nombre: 'Pedro' },
@@ -129,4 +129,22 @@ test('si no está publicado lo indica', async () => {
   await w.get('[data-test="ver-ranking"]').trigger('click')
   await flushPromises()
   expect(w.text()).toContain('aún no se ha publicado')
+})
+
+test('pestañas de categoría con su color: la elegida en relleno sólido', async () => {
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  const peq = w.get('[data-test="tab-categoria-1"]')
+  const gra = w.get('[data-test="tab-categoria-2"]')
+  expect(peq.attributes('aria-pressed')).toBe('true')
+  expect(gra.attributes('aria-pressed')).toBe('false')
+  expect(peq.element.style.backgroundColor).toBe('rgb(255, 0, 0)')
+  expect(peq.element.style.color).toBe('rgb(0, 0, 0)')
+  expect(gra.element.style.borderColor).toBe('rgb(255, 255, 0)')
+  expect(gra.element.style.backgroundColor).not.toBe('rgb(255, 255, 0)')
+  await gra.trigger('click')
+  await flushPromises()
+  expect(trk.get).toHaveBeenLastCalledWith('/participantes', { params: { categoria: 2 } })
+  expect(w.get('[data-test="tab-categoria-2"]').element.style.backgroundColor).toBe('rgb(255, 255, 0)')
+  expect(w.get('[data-test="tab-categoria-2"]').classes()).toContain('btn')
 })

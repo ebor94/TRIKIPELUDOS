@@ -7,6 +7,8 @@ import { useCategoriasStore } from '@/stores/categorias'
 import BarraSuperior from '@/components/BarraSuperior.vue'
 import FotoMascota from '@/components/FotoMascota.vue'
 import EstadoChip from '@/components/EstadoChip.vue'
+import ChipCategoria from '@/components/ChipCategoria.vue'
+import { estiloSolido } from '@/utils/colorCategoria'
 
 const categorias = useCategoriasStore()
 const texto = ref('')
@@ -20,6 +22,9 @@ const mostrandoAlta = ref(false)
 const alta = reactive({ responsable_nombre: '', responsable_telefono: '', mascota_nombre: '', especie: 'PERRO', categoria_id: null })
 const pendiente = ref(null) // { id, blob } tras un POST fallido
 const subiendo = computed(() => progreso.value !== null && progreso.value < 100)
+// Categoría elegida en cada select, para el chip de color (las <option> no se colorean en Android/iOS).
+const categoriaAlta = computed(() => (alta.categoria_id ? categorias.porId(alta.categoria_id) : null))
+const categoriaFicha = computed(() => (datos.categoria_id ? categorias.porId(datos.categoria_id) : null))
 let espera = null
 let ultimaBusqueda = 0
 
@@ -148,10 +153,13 @@ onBeforeUnmount(() => clearTimeout(espera))
         <input v-model="alta.responsable_telefono" data-test="alta-telefono" class="campo" inputmode="tel" placeholder="Teléfono (10 dígitos)" required pattern="\d{7,10}" />
         <input v-model="alta.mascota_nombre" data-test="alta-mascota" class="campo" placeholder="Nombre de la mascota" required />
         <select v-model="alta.especie" data-test="alta-especie" class="campo"><option value="PERRO">Perro</option><option value="GATO">Gato</option></select>
-        <select v-model="alta.categoria_id" data-test="alta-categoria" class="campo" required>
-          <option :value="null" disabled>Categoría</option>
-          <option v-for="c in categorias.lista" :key="c.id" :value="c.id">{{ c.nombre }}</option>
-        </select>
+        <div class="flex flex-col gap-1">
+          <select v-model="alta.categoria_id" data-test="alta-categoria" class="campo" required>
+            <option :value="null" disabled>Categoría</option>
+            <option v-for="c in categorias.lista" :key="c.id" :value="c.id" :style="estiloSolido(c.color)">{{ c.nombre }}</option>
+          </select>
+          <ChipCategoria v-if="categoriaAlta" data-test="alta-categoria-chip" :categoria="categoriaAlta" grande class="self-start" />
+        </div>
         <button class="btn-primario" type="submit">Inscribir</button>
       </form>
 
@@ -187,9 +195,10 @@ onBeforeUnmount(() => clearTimeout(espera))
           </label>
           <label class="flex flex-col gap-1"><span class="font-semibold">Categoría</span>
             <select v-model="datos.categoria_id" data-test="categoria" class="campo">
-              <option v-for="c in categorias.lista" :key="c.id" :value="c.id">{{ c.nombre }}</option>
+              <option v-for="c in categorias.lista" :key="c.id" :value="c.id" :style="estiloSolido(c.color)">{{ c.nombre }}</option>
             </select>
           </label>
+          <ChipCategoria v-if="categoriaFicha" data-test="categoria-chip" :categoria="categoriaFicha" grande class="self-start" />
           <button class="btn-secundario" type="submit">Guardar datos</button>
         </form>
         <p v-if="aviso" class="rounded-xl bg-calabaza-50 p-3 text-calabaza-900" role="status">{{ aviso }}</p>
@@ -205,7 +214,8 @@ onBeforeUnmount(() => clearTimeout(espera))
             <FotoMascota :participante="p" clase="h-16 w-14 shrink-0 rounded-xl" />
             <span class="flex-1">
               <span class="block font-semibold">{{ p.mascota_nombre }}</span>
-              <span class="block text-sm text-morado-600">{{ p.responsable_nombre }} · {{ p.categoria && p.categoria.nombre }}</span>
+              <span class="block text-sm text-morado-600">{{ p.responsable_nombre }}</span>
+              <ChipCategoria v-if="p.categoria" :categoria="p.categoria" class="mt-1" />
             </span>
             <EstadoChip :estado="p.estado" />
           </button>

@@ -16,8 +16,8 @@ import JuradoView from '@/views/JuradoView.vue'
 
 // Máximos ficticios (los reales vienen de la API).
 const CRITERIOS = [{ id: 1, codigo: 'A', nombre: 'Creatividad', puntaje_max: 9, orden: 1 }, { id: 2, codigo: 'B', nombre: 'Seguridad', puntaje_max: 8, orden: 2 }]
-const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', abierta: true }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos', abierta: true }]
-const toby = { id: 't', mascota_nombre: 'Toby', estado: 'EN_PASARELA', categoria_id: 1, categoria: { id: 1, nombre: 'Pequeños' }, responsable_primer_nombre: 'Ana' }
+const CATS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Pequeños', abierta: true, color: '#FF9900' }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos', abierta: true, color: '#00B0F0' }]
+const toby = { id: 't', mascota_nombre: 'Toby', estado: 'EN_PASARELA', categoria_id: 1, categoria: { id: 1, nombre: 'Pequeños', color: '#FF9900' }, responsable_primer_nombre: 'Ana' }
 const kira = { id: 'k', mascota_nombre: 'Kira', estado: 'PRESENTADO', categoria_id: 1 }
 const SIN_FINAL = { estado: null, total: null, puntajes: null }
 let respuesta
@@ -132,14 +132,14 @@ test('sigue la pasarela en vivo; si el jurado elige otra categoría la conserva 
   await flushPromises()
   expect(trk.get).toHaveBeenLastCalledWith('/jurado/matriz', { params: {} })
 
-  await w.get('[data-test="selector-categoria"]').setValue('3')
+  await w.get('[data-test="tab-categoria-3"]').trigger('click')
   await flushPromises()
   expect(trk.get).toHaveBeenLastCalledWith('/jurado/matriz', { params: { categoria: 3 } })
   tiempoReal.opciones.eventos['pasarela:cambio']({ participante: toby })
   await flushPromises()
   expect(trk.get).toHaveBeenLastCalledWith('/jurado/matriz', { params: { categoria: 3 } })
 
-  await w.get('[data-test="selector-categoria"]').setValue('1')
+  await w.get('[data-test="tab-categoria-1"]').trigger('click')
   await flushPromises()
   expect(trk.get).toHaveBeenLastCalledWith('/jurado/matriz', { params: {} })
 })
@@ -281,12 +281,12 @@ test('cambio rápido de categoría: la respuesta lenta de la primera se descarta
     if (url !== '/jurado/matriz') throw new Error(`GET inesperado ${url}`)
     return o.params.categoria === 3 ? lenta.promesa : { data: matrizBase() }
   })
-  await w.get('[data-test="selector-categoria"]').setValue('3')
-  await w.get('[data-test="selector-categoria"]').setValue('1')
+  await w.get('[data-test="tab-categoria-3"]').trigger('click')
+  await w.get('[data-test="tab-categoria-1"]').trigger('click')
   await flushPromises()
   lenta.resolver({ data: felinos })
   await flushPromises()
-  expect(w.get('[data-test="selector-categoria"]').element.value).toBe('1')
+  expect(w.get('[data-test="tab-categoria-1"]').attributes('aria-pressed')).toBe('true')
   expect(w.find('[data-test="fila-g"]').exists()).toBe(false)
   expect(w.find('[data-test="fila-t"]').exists()).toBe(true)
 })
@@ -319,4 +319,37 @@ test('la foto de la matriz o de la tarjeta se amplía en un visor y se cierra', 
   expect(w.find('[data-test="visor-foto"]').exists()).toBe(false)
   await w.get('[data-test="foto-pasarela"]').trigger('click')
   expect(w.get('[data-test="visor-foto"]').text()).toContain('Toby')
+})
+
+test('pestañas de categoría con su color: la elegida en relleno sólido, las demás con borde (sin select nativo)', async () => {
+  const w = await montar()
+  const selector = w.get('[data-test="selector-categoria"]')
+  expect(selector.element.tagName).not.toBe('SELECT')
+  expect(w.find('select').exists()).toBe(false)
+  const peq = w.get('[data-test="tab-categoria-1"]')
+  const fel = w.get('[data-test="tab-categoria-3"]')
+  expect(peq.element.tagName).toBe('BUTTON')
+  expect(peq.classes()).toContain('btn')
+  expect(peq.attributes('aria-pressed')).toBe('true')
+  expect(fel.attributes('aria-pressed')).toBe('false')
+  expect(peq.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
+  expect(peq.element.style.color).toBe('rgb(0, 0, 0)')
+  expect(fel.element.style.borderColor).toBe('rgb(0, 176, 240)')
+  expect(fel.element.style.backgroundColor).not.toBe('rgb(0, 176, 240)')
+  for (const t of [peq, fel]) expect(t.classes()).not.toContain('min-h-0')
+})
+
+test('pestaña sin color usa el estilo de siempre (sin estilos en línea)', async () => {
+  respuesta.categorias = [{ ...CATS[0], color: null }, CATS[1]]
+  const w = await montar()
+  const peq = w.get('[data-test="tab-categoria-1"]')
+  expect(peq.element.style.backgroundColor).toBe('')
+  expect(peq.attributes('aria-pressed')).toBe('true')
+})
+
+test('la tarjeta En pasarela muestra la categoría como chip con su color', async () => {
+  const w = await montar()
+  const chip = w.get('[data-test="en-pasarela"] [data-test="chip-categoria"]')
+  expect(chip.text()).toContain('Pequeños')
+  expect(chip.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
 })

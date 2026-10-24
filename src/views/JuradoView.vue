@@ -10,6 +10,8 @@ import { totalDe, completa, puestosTentativos, aLista, aMapa } from '@/utils/mat
 import BarraSuperior from '@/components/BarraSuperior.vue'
 import FotoMascota from '@/components/FotoMascota.vue'
 import MatrizCalificacion from '@/components/MatrizCalificacion.vue'
+import ChipCategoria from '@/components/ChipCategoria.vue'
+import { estiloSolido, estiloTenue, normalizarColor } from '@/utils/colorCategoria'
 
 const auth = useAuthStore()
 const evento = useEventoStore()
@@ -115,6 +117,15 @@ function alCambiar({ participanteId, criterioId, valor }) {
     .catch((e) => { error.value = mensajeDeError(e) })
 }
 
+// Pestañas por categoría (un <select> nativo no se puede colorear en tablets): la elegida en relleno sólido.
+const esElegida = (c) => Boolean(matriz.value && matriz.value.categoria && Number(matriz.value.categoria.id) === Number(c.id))
+const estiloPestana = (c) => (esElegida(c) ? estiloSolido(c.color) : estiloTenue(c.color))
+const clasePestana = (c) => {
+  const conColor = Boolean(normalizarColor(c.color))
+  if (esElegida(c)) return conColor ? 'border-2 shadow-md ring-2 ring-morado-900 ring-offset-2' : 'border-2 border-calabaza-700 bg-calabaza-700 text-white'
+  return conColor ? 'border-2 text-morado-900' : 'border-2 border-morado-200 bg-white text-morado-800'
+}
+
 function elegirCategoria(id) {
   const dePasarela = evento.enPasarela && evento.enPasarela.categoria_id
   categoriaElegida.value = Number(id) === Number(dePasarela) ? null : Number(id)
@@ -179,20 +190,25 @@ onBeforeUnmount(() => detenerSync && detenerSync())
           <h2 class="truncate text-2xl font-extrabold leading-tight text-morado-800">{{ enPasarela.mascota_nombre }}</h2>
           <p v-if="enPasarela.disfraz_nombre" class="font-semibold text-calabaza-800">Disfraz: «{{ enPasarela.disfraz_nombre }}»</p>
           <p v-if="datosMascota(enPasarela).length" class="text-sm text-morado-900">{{ datosMascota(enPasarela).join(' · ') }}</p>
-          <p v-if="enPasarela.categoria" class="text-sm text-morado-700">{{ enPasarela.categoria.nombre }}<template v-if="enPasarela.orden_pasarela"> · Turno {{ enPasarela.orden_pasarela }}</template></p>
+          <p v-if="enPasarela.categoria" class="flex flex-wrap items-center gap-2 text-sm text-morado-700"><ChipCategoria :categoria="enPasarela.categoria" /><template v-if="enPasarela.orden_pasarela"><span>Turno {{ enPasarela.orden_pasarela }}</span></template></p>
         </div>
       </section>
       <p v-else class="tarjeta text-center">Aún no hay mascota en pasarela.</p>
 
-      <label v-if="matriz" class="flex flex-col gap-1">
-        <span class="text-sm font-semibold text-morado-800">Categoría</span>
-        <select class="campo" data-test="selector-categoria" :value="matriz.categoria ? matriz.categoria.id : ''" @change="elegirCategoria($event.target.value)">
-          <option v-if="!matriz.categoria" value="" disabled>Elige una categoría</option>
-          <option v-for="c in matriz.categorias" :key="c.id" :value="c.id">{{ c.nombre }}</option>
-        </select>
-      </label>
+      <div v-if="matriz" class="flex flex-col gap-1">
+        <span id="etiqueta-categoria" class="text-sm font-semibold text-morado-800">Categoría<template v-if="!matriz.categoria"> (elige una)</template></span>
+        <div data-test="selector-categoria" role="group" aria-labelledby="etiqueta-categoria" class="flex flex-wrap gap-2">
+          <button
+            v-for="c in matriz.categorias" :key="c.id" type="button"
+            :data-test="`tab-categoria-${c.id}`" :aria-pressed="esElegida(c) ? 'true' : 'false'"
+            class="btn min-w-tactil flex-1 whitespace-nowrap sm:flex-none" :class="clasePestana(c)" :style="estiloPestana(c)"
+            @click="elegirCategoria(c.id)"
+          ><span v-if="esElegida(c)" aria-hidden="true">✓</span>{{ c.nombre }}</button>
+        </div>
+      </div>
 
       <template v-if="matriz && matriz.categoria">
+        <p data-test="encabezado-matriz" class="flex items-center gap-2 border-b-4 border-morado-200 pb-1 text-sm font-semibold text-morado-800" :style="normalizarColor(matriz.categoria.color) ? { borderColor: normalizarColor(matriz.categoria.color) } : {}">Calificando <ChipCategoria :categoria="matriz.categoria" grande /></p>
         <p v-if="!abierta" class="rounded-xl bg-red-100 p-3 text-red-800">La categoría está cerrada.</p>
         <p v-if="!filas.length" class="tarjeta text-center">Aún no desfila ninguna mascota de esta categoría.</p>
         <MatrizCalificacion

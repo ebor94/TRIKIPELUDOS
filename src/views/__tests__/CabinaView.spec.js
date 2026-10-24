@@ -14,7 +14,7 @@ import { trk } from '@/services/api'
 import { comprimirImagen } from '@/utils/imagen'
 import CabinaView from '@/views/CabinaView.vue'
 
-const CATEGORIAS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Caninos pequeños' }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos' }]
+const CATEGORIAS = [{ id: 1, codigo: 'PEQUENOS', nombre: 'Caninos pequeños', color: '#FF9900' }, { id: 3, codigo: 'FELINOS', nombre: 'Felinos', color: '#00B0F0' }]
 const canela = { id: 'p1', mascota_nombre: 'Canela', responsable_nombre: 'Laura Gómez', responsable_telefono: '3001112233', estado: 'INSCRITO', categoria_id: 1, categoria: CATEGORIAS[0], especie: 'PERRO', disfraz_nombre: 'Bruja', foto_url: null }
 
 beforeEach(() => {
@@ -199,4 +199,41 @@ test('marcar como ausente actualiza el estado', async () => {
   await flushPromises()
   expect(trk.patch).toHaveBeenCalledWith('/participantes/p1/estado', { estado: 'AUSENTE' })
   expect(w.text()).toContain('Ausente')
+})
+
+test('ficha: chip con color y nombre de la categoría elegida junto al select, y opciones coloreadas', async () => {
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  let chip = w.get('[data-test="categoria-chip"]')
+  expect(chip.text()).toContain('Caninos pequeños')
+  expect(chip.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
+  await w.get('[data-test="categoria"]').setValue('3')
+  chip = w.get('[data-test="categoria-chip"]')
+  expect(chip.text()).toContain('Felinos')
+  expect(chip.element.style.backgroundColor).toBe('rgb(0, 176, 240)')
+  const opcion = w.findAll('[data-test="categoria"] option').find((o) => o.text() === 'Felinos')
+  expect(opcion.element.style.backgroundColor).toBe('rgb(0, 176, 240)')
+})
+
+test('alta: el chip aparece al elegir categoría', async () => {
+  const w = mount(CabinaView)
+  await flushPromises()
+  await w.get('[data-test="abrir-alta"]').trigger('click')
+  expect(w.find('[data-test="alta-categoria-chip"]').exists()).toBe(false)
+  await w.get('[data-test="alta-categoria"]').setValue('3')
+  const chip = w.get('[data-test="alta-categoria-chip"]')
+  expect(chip.text()).toContain('Felinos')
+  expect(chip.element.style.backgroundColor).toBe('rgb(0, 176, 240)')
+})
+
+test('resultados de búsqueda: la categoría se ve como chip con su color', async () => {
+  const w = mount(CabinaView)
+  await flushPromises()
+  await w.get('[data-test="buscar"]').setValue('canela')
+  vi.advanceTimersByTime(350)
+  await flushPromises()
+  const chip = w.get('[data-test="participante-p1"] [data-test="chip-categoria"]')
+  expect(chip.text()).toContain('Caninos pequeños')
+  expect(chip.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
 })

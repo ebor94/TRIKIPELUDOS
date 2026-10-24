@@ -12,6 +12,7 @@ import FichaMascota from '@/components/FichaMascota.vue'
 import FotoMascota from '@/components/FotoMascota.vue'
 import EstadoChip from '@/components/EstadoChip.vue'
 import PodioRanking from '@/components/PodioRanking.vue'
+import { estiloSolido, estiloTenue, normalizarColor } from '@/utils/colorCategoria'
 
 const auth = useAuthStore()
 const evento = useEventoStore()
@@ -55,6 +56,14 @@ async function verRanking() {
   try {
     rankingPublicado.value = (await trk.get(`/ranking/${categoriaId.value}`)).data
   } catch (e) { mensajeRanking.value = mensajeDeError(e) }
+}
+
+// Pestañas con el color de cada categoría: la elegida en relleno sólido, las demás con contorno.
+const estiloPestana = (c) => (c.id === categoriaId.value ? estiloSolido(c.color) : estiloTenue(c.color))
+const clasePestana = (c) => {
+  const conColor = Boolean(normalizarColor(c.color))
+  if (c.id === categoriaId.value) return conColor ? 'border-2 shadow-md ring-2 ring-morado-900 ring-offset-1' : 'border-2 border-calabaza-700 bg-calabaza-700 text-white'
+  return conColor ? 'border-2 text-morado-900' : 'border-2 border-transparent text-morado-800'
 }
 
 function elegirCategoria(id) {
@@ -116,8 +125,11 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen pb-28">
     <BarraSuperior titulo="Comentarista" />
-    <nav class="flex gap-1 overflow-x-auto bg-white px-2 py-1 shadow-sm">
-      <button v-for="c in categorias.lista" :key="c.id" class="btn whitespace-nowrap" :class="c.id === categoriaId ? 'bg-calabaza-700 text-white' : 'text-morado-800'" @click="elegirCategoria(c.id)">{{ c.nombre }}</button>
+    <nav class="flex gap-2 overflow-x-auto bg-white px-2 py-2 shadow-sm">
+      <button
+        v-for="c in categorias.lista" :key="c.id" type="button" :data-test="`tab-categoria-${c.id}`" :aria-pressed="c.id === categoriaId ? 'true' : 'false'"
+        class="btn whitespace-nowrap" :class="clasePestana(c)" :style="estiloPestana(c)" @click="elegirCategoria(c.id)"
+      ><span v-if="c.id === categoriaId" aria-hidden="true">✓</span>{{ c.nombre }}</button>
       <button class="btn whitespace-nowrap bg-morado-700 text-white" data-test="ver-ranking" @click="verRanking">🏆 Ranking</button>
     </nav>
     <section v-if="viendoRanking" class="mx-auto max-w-5xl p-4">
