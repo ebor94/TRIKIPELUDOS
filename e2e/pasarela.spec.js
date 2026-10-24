@@ -21,6 +21,8 @@ test('comentarista llama a pasarela y 2 pantallas + el propio comentarista lo ve
   await expect(pantalla1.locator('main')).toBeVisible()
   await expect(pantalla2.locator('main')).toBeVisible()
 
+  // Las mascotas sembradas están en "Caninos raza pequeña" (no es la primera categoría del orden v3)
+  await comentarista.getByRole('button', { name: /Caninos raza pequeña/ }).click()
   await expect(comentarista.getByTestId('ficha')).toContainText('Toby')
   const inicio = Date.now()
   await comentarista.getByTestId('llamar').click()
