@@ -237,3 +237,30 @@ test('resultados de búsqueda: la categoría se ve como chip con su color', asyn
   expect(chip.text()).toContain('Caninos pequeños')
   expect(chip.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
 })
+
+test('foto del registro: como perfil en los resultados y junto a la oficial en la ficha para constatar la mascota', async () => {
+  const conRegistro = { ...canela, foto_inscripcion_url: 'https://drive.google.com/file/d/IDREG/view?usp=drive_link', foto_url: '/uploads/trk/fotos/o.jpg' }
+  trk.get.mockImplementation(async (url) => (url === '/categorias' ? { data: CATEGORIAS } : { data: [conRegistro] }))
+  const w = mount(CabinaView)
+  await flushPromises()
+  await w.get('[data-test="buscar"]').setValue('canela')
+  vi.advanceTimersByTime(350)
+  await flushPromises()
+  const miniatura = 'https://drive.google.com/thumbnail?id=IDREG&sz=w1000'
+  expect(w.get('[data-test="participante-p1"] img').attributes('src')).toBe(miniatura)
+  await w.get('[data-test="participante-p1"]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test="foto-registro"]').text()).toContain('Foto del registro')
+  expect(w.get('[data-test="foto-registro"] img').attributes('src')).toBe(miniatura)
+  expect(w.get('[data-test="foto-registro"] a').attributes('href')).toBe(conRegistro.foto_inscripcion_url)
+  expect(w.get('[data-test="foto-oficial"]').text()).toContain('Foto oficial')
+  expect(w.get('[data-test="foto-oficial"] img').attributes('src')).toBe('/uploads/trk/fotos/o.jpg')
+})
+
+test('sin foto de registro la ficha muestra solo la oficial', async () => {
+  const w = mount(CabinaView)
+  await flushPromises()
+  await buscarYAbrir(w)
+  expect(w.find('[data-test="foto-registro"]').exists()).toBe(false)
+  expect(w.get('[data-test="foto-oficial"]').exists()).toBe(true)
+})

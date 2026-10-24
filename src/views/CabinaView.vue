@@ -171,7 +171,20 @@ onBeforeUnmount(() => clearTimeout(espera))
           </div>
           <EstadoChip :estado="actual.estado" />
         </div>
-        <FotoMascota :participante="actual" />
+        <!-- Foto del registro (formulario) para constatar que es la mascota inscrita; la oficial es la de pasarela -->
+        <div :class="['grid gap-3', actual.foto_inscripcion_url ? 'grid-cols-2' : 'grid-cols-1']">
+          <figure v-if="actual.foto_inscripcion_url" data-test="foto-registro" class="flex flex-col gap-1">
+            <FotoMascota :participante="actual" origen="registro" />
+            <figcaption class="flex flex-wrap items-center justify-between gap-1 text-sm font-semibold text-morado-800">
+              Foto del registro
+              <a :href="actual.foto_inscripcion_url" target="_blank" rel="noopener" class="inline-flex min-h-tactil items-center text-morado-700 underline">Abrir</a>
+            </figcaption>
+          </figure>
+          <figure data-test="foto-oficial" class="flex flex-col gap-1">
+            <FotoMascota :participante="actual" />
+            <figcaption class="text-sm font-semibold text-morado-800">Foto oficial (pasarela)</figcaption>
+          </figure>
+        </div>
 
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label class="btn-primario min-h-[56px] text-lg">
@@ -211,7 +224,7 @@ onBeforeUnmount(() => clearTimeout(espera))
       <ul class="flex flex-col gap-2">
         <li v-for="p in resultados" :key="p.id">
           <button :data-test="`participante-${p.id}`" class="tarjeta flex w-full items-center gap-3 text-left" @click="abrir(p)">
-            <FotoMascota :participante="p" clase="h-16 w-14 shrink-0 rounded-xl" />
+            <FotoMascota :participante="p" origen="perfil" clase="h-16 w-14 shrink-0 rounded-xl" />
             <span class="flex-1">
               <span class="block font-semibold">{{ p.mascota_nombre }}</span>
               <span class="block text-sm text-morado-600">{{ p.responsable_nombre }}</span>
