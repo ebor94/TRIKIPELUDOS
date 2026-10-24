@@ -151,7 +151,12 @@ useTiempoReal({
   token: auth.token,
   sincronizar: async () => { await evento.sincronizar(); await cargar() },
   eventos: {
-    'pasarela:cambio': (m) => { evento.alCambioPasarela(m); cargar() },
+    'pasarela:cambio': (m) => {
+      // Pasarela terminada (nadie en pasarela): el jurado se queda en la categoría que estaba calificando.
+      if (!m.participante && !categoriaElegida.value && matriz.value && matriz.value.categoria) categoriaElegida.value = matriz.value.categoria.id
+      evento.alCambioPasarela(m)
+      cargar()
+    },
     'foto:nueva': (m) => { evento.alFotoNueva(m); cargar() }
   }
 })

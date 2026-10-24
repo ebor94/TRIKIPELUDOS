@@ -353,3 +353,12 @@ test('la tarjeta En pasarela muestra la categoría como chip con su color', asyn
   expect(chip.text()).toContain('Pequeños')
   expect(chip.element.style.backgroundColor).toBe('rgb(255, 153, 0)')
 })
+
+test('al terminar la pasarela el jurado se queda en la categoría que estaba calificando', async () => {
+  const w = await montar()
+  trk.get.mockClear()
+  tiempoReal.opciones.eventos['pasarela:cambio']({ participante: null, anteriores: ['t'] })
+  await flushPromises()
+  expect(trk.get).toHaveBeenCalledWith('/jurado/matriz', { params: { categoria: 1 } })
+  expect(w.find('[data-test^="tab-categoria-1"]').exists()).toBe(true)
+})

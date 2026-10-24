@@ -365,6 +365,7 @@ Prefijo `/api/trk/v1`. Permiso = clave en `roles.permisos.trk` (`requirePermiso`
 | TRK-PAR-008 | PATCH | `/participantes/:id/estado` | `cabina` | Marca / desmarca `AUSENTE` |
 | TRK-PAS-001 | POST | `/pasarela/:id` | `pasarela` | Pone en pasarela |
 | TRK-PAS-002 | PUT | `/pasarela/orden` | `pasarela` | Reordena la cola |
+| TRK-PAS-003 | POST | `/pasarela/terminar` | `pasarela` | Termina la pasarela: la mascota en pasarela queda PRESENTADO, nadie en pasarela y la pantalla vuelve a la portada (idempotente, auditado) |
 | TRK-EVT-001 | GET | `/evento/estado` | público | En pasarela (campos públicos) + modo de pantalla; base del polling de respaldo |
 | TRK-EVT-002 | PUT | `/evento/pantalla` | `administrar` | Modo y categoría de la pantalla pública |
 | TRK-EVT-003 | GET | `/evento/tablero` | `administrar` | Contadores por estado/categoría y progreso por jurado |

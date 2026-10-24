@@ -2,7 +2,7 @@ import { test, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
-vi.mock('@/services/api', () => ({ api: {}, trk: { get: vi.fn(), put: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
+vi.mock('@/services/api', () => ({ api: {}, trk: { get: vi.fn(), put: vi.fn(), post: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 vi.mock('@/composables/useTiempoReal', () => ({ useTiempoReal: vi.fn(() => ({ conectado: { value: true } })) }))
 
 import { trk } from '@/services/api'
@@ -47,4 +47,14 @@ test('los botones de la cabecera envuelven en pantallas de 360 px', async () => 
   const w = mount(TableroView)
   await flushPromises()
   expect(w.get('[data-test="abrir-pantalla"]').element.parentElement.className).toContain('flex-wrap')
+})
+
+test('Terminar pasarela desde el tablero (con confirmación)', async () => {
+  window.confirm = vi.fn(() => true)
+  trk.post.mockResolvedValue({ data: { en_pasarela: null, terminado: null } })
+  const w = mount(TableroView)
+  await flushPromises()
+  await w.get('[data-test="terminar-pasarela"]').trigger('click')
+  await flushPromises()
+  expect(trk.post).toHaveBeenCalledWith('/pasarela/terminar')
 })

@@ -21,6 +21,12 @@ async function pantalla(cuerpo) {
   try { await trk.put('/evento/pantalla', cuerpo) } catch (e) { error.value = mensajeDeError(e) }
 }
 
+async function terminarPasarela() {
+  if (!window.confirm('¿Terminar la pasarela? La mascota en pasarela quedará como presentada y la pantalla volverá a la portada.')) return
+  error.value = ''
+  try { await trk.post('/pasarela/terminar'); await cargar() } catch (e) { error.value = mensajeDeError(e) }
+}
+
 useTiempoReal({
   token: auth.token,
   sincronizar: cargar,
@@ -37,6 +43,7 @@ onMounted(cargar)
       <div class="flex flex-wrap gap-2">
         <a class="btn-claro" data-test="abrir-pantalla" :href="urlPantalla" target="_blank" rel="noopener">Abrir pantalla</a>
         <button class="btn-secundario" data-test="pantalla-pasarela" @click="pantalla({ modo: 'PASARELA' })">Pantalla: pasarela</button>
+        <button class="btn-claro" data-test="terminar-pasarela" @click="terminarPasarela">⏹ Terminar pasarela</button>
       </div>
     </div>
     <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>

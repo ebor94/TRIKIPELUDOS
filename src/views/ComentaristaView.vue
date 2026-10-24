@@ -85,6 +85,20 @@ async function llamar() {
   } catch (e) { error.value = mensajeDeError(e) } finally { llamando.value = false }
 }
 
+// Fin de los desfiles: nadie queda en pasarela y la pantalla vuelve a la portada.
+const terminando = ref(false)
+async function terminarPasarela() {
+  const nombre = evento.enPasarela ? evento.enPasarela.mascota_nombre : 'la mascota actual'
+  if (!window.confirm(`¿Terminar la pasarela? ${nombre} quedará como presentada y la pantalla volverá a la portada.`)) return
+  terminando.value = true
+  error.value = ''
+  try {
+    await trk.post('/pasarela/terminar')
+    cola.value = cola.value.map((p) => (p.estado === 'EN_PASARELA' ? { ...p, estado: 'PRESENTADO' } : p))
+    evento.alCambioPasarela({ participante: null })
+  } catch (e) { error.value = mensajeDeError(e) } finally { terminando.value = false }
+}
+
 async function guardarOrden(nuevo) {
   try {
     fijarCola((await trk.put('/pasarela/orden', { categoria_id: categoriaId.value, orden: nuevo.map((p) => p.id) })).data)
@@ -172,10 +186,11 @@ onMounted(async () => {
       </aside>
     </main>
 
-    <div v-if="actual" class="fixed inset-x-0 bottom-0 bg-white/95 p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
-      <button class="btn-primario mx-auto flex min-h-[64px] w-full max-w-xl text-2xl" data-test="llamar" :disabled="llamando || actual.estado === 'EN_PASARELA'" @click="llamar">
+    <div v-if="actual || evento.enPasarela" class="fixed inset-x-0 bottom-0 flex flex-wrap justify-center gap-2 bg-white/95 p-3 shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+      <button v-if="actual" class="btn-primario flex min-h-[64px] w-full max-w-xl flex-1 text-2xl" data-test="llamar" :disabled="llamando || actual.estado === 'EN_PASARELA'" @click="llamar">
         {{ actual.estado === 'EN_PASARELA' ? 'En pasarela' : '📣 Llamar a pasarela' }}
       </button>
+      <button v-if="evento.enPasarela" class="btn-claro min-h-[64px] px-5 text-lg" data-test="terminar-pasarela" :disabled="terminando" @click="terminarPasarela">⏹ Terminar pasarela</button>
     </div>
   </div>
 </template>

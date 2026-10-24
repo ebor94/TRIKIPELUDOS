@@ -148,3 +148,30 @@ test('pestañas de categoría con su color: la elegida en relleno sólido', asyn
   expect(w.get('[data-test="tab-categoria-2"]').element.style.backgroundColor).toBe('rgb(255, 255, 0)')
   expect(w.get('[data-test="tab-categoria-2"]').classes()).toContain('btn')
 })
+
+import { useEventoStore } from '@/stores/evento'
+
+test('Terminar pasarela: con una mascota en pasarela, confirma y deja la pasarela vacía', async () => {
+  window.confirm = vi.fn(() => true)
+  trk.post.mockResolvedValue({ data: { en_pasarela: null, terminado: 'c' } })
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  expect(w.find('[data-test="terminar-pasarela"]').exists()).toBe(false)
+  useEventoStore().enPasarela = { id: 'c', mascota_nombre: 'Toby' }
+  await flushPromises()
+  await w.get('[data-test="terminar-pasarela"]').trigger('click')
+  await flushPromises()
+  expect(window.confirm).toHaveBeenCalled()
+  expect(trk.post).toHaveBeenCalledWith('/pasarela/terminar')
+  expect(useEventoStore().enPasarela).toBeNull()
+})
+
+test('Terminar pasarela: si no confirma, no hace nada', async () => {
+  window.confirm = vi.fn(() => false)
+  const w = mount(ComentaristaView)
+  await flushPromises()
+  useEventoStore().enPasarela = { id: 'c', mascota_nombre: 'Toby' }
+  await flushPromises()
+  await w.get('[data-test="terminar-pasarela"]').trigger('click')
+  expect(trk.post).not.toHaveBeenCalledWith('/pasarela/terminar')
+})
