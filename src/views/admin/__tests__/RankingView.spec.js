@@ -163,3 +163,11 @@ test('una respuesta de una categoría anterior llegada tarde no reemplaza a la c
   expect(w.text()).not.toContain('Incompleta (2/3)')
   expect(w.get('[data-test="puestos"]').element.value).toBe('7')
 })
+
+test('las pestañas de categoría llevan el color de la categoría', async () => {
+  CATS[0].color = '#FD7218'
+  const w = mount(RankingView)
+  await flushPromises()
+  expect(w.get('[data-test="tab-ranking-1"]').attributes('style')).toContain('background-color')
+  delete CATS[0].color
+})

@@ -1,4 +1,6 @@
 <script setup>
+import ChipCategoria from '@/components/ChipCategoria.vue'
+import { estiloSolido } from '@/utils/colorCategoria'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { trk } from '@/services/api'
 import { useCategoriasStore } from '@/stores/categorias'
@@ -96,7 +98,7 @@ async function confirmar() {
         <li v-for="f in vista.filas" :key="f.indice" class="tarjeta flex flex-col gap-2" :class="seImporta(f) ? '' : 'opacity-60'">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="font-semibold">Línea {{ f.linea }} · {{ f.datos.mascota_nombre || '(sin nombre)' }} <span class="font-normal text-morado-600">· {{ f.datos.responsable_nombre }}</span></p>
-            <span class="rounded-full bg-morado-100 px-3 py-1 text-sm">{{ nombreCategoria(categoriaFinal(f)) }}</span>
+            <ChipCategoria :categoria="categorias.porCodigo(categoriaFinal(f)) || { nombre: nombreCategoria(categoriaFinal(f)) }" />
           </div>
           <ul class="flex flex-col gap-1 text-sm">
             <li v-for="(a, i) in f.advertencias" :key="`a${i}`" class="flex flex-wrap items-center gap-2 rounded-lg bg-calabaza-50 p-2 text-calabaza-900">
@@ -116,7 +118,7 @@ async function confirmar() {
               Categoría:
               <select class="campo min-h-tactil w-auto" :data-test="`categoria-${f.indice}`" :value="decisiones.categoria[f.indice] || ''" @change="decisiones.categoria[f.indice] = $event.target.value">
                 <option value="">—</option>
-                <option v-for="c in categorias.lista" :key="c.codigo" :value="c.codigo">{{ c.nombre }}</option>
+                <option v-for="c in categorias.lista" :key="c.codigo" :value="c.codigo" :style="estiloSolido(c.color)">{{ c.nombre }}</option>
               </select>
             </label>
             <label class="flex min-h-tactil items-center gap-2">

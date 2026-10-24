@@ -7,6 +7,7 @@ import { useTiempoReal } from '@/composables/useTiempoReal'
 import FotoMascota from '@/components/FotoMascota.vue'
 import PodioPantalla from '@/components/PodioPantalla.vue'
 import PortadaEvento from '@/components/PortadaEvento.vue'
+import { estiloSolido } from '@/utils/colorCategoria'
 import { LOGO_TEXTO, ALT_LOGO, FONDO_PANTALLA, PATROCINADORES, ALT_PATROCINADORES, CALABAZA } from '@/utils/marca'
 
 const evento = useEventoStore()
@@ -55,7 +56,7 @@ useTiempoReal({
         v-if="enPasarela || enRanking" data-test="logo-texto" :src="LOGO_TEXTO" :alt="ALT_LOGO"
         class="absolute left-[45px] top-[40px] w-[455px] drop-shadow-xl"
       />
-      <p v-if="enRanking" data-test="categoria-ranking" class="contorno-oscuro absolute left-[35px] top-[195px] max-w-[560px] font-cartel text-[46px] leading-tight text-calabaza-400">{{ evento.ranking.categoria.nombre }}</p>
+      <p v-if="enRanking" data-test="categoria-ranking" :class="['absolute left-[35px] top-[195px] max-w-[600px] font-cartel text-[42px] leading-tight', evento.ranking.categoria.color ? 'rounded-full px-6 py-1 shadow-xl' : 'contorno-oscuro text-calabaza-400']" :style="estiloSolido(evento.ranking.categoria.color)">{{ evento.ranking.categoria.nombre }}</p>
       <img data-test="patrocinadores" :src="PATROCINADORES" :alt="ALT_PATROCINADORES" class="absolute left-[628px] top-0 w-[812px]" />
       <div v-if="etiqueta" class="absolute right-[48px] top-[30px] flex items-center gap-3">
         <img data-test="calabaza" :src="CALABAZA" alt="" class="h-[62px] w-auto drop-shadow-lg" />
@@ -70,7 +71,7 @@ useTiempoReal({
         <div class="absolute left-[945px] top-[490px] flex max-w-[1010px] flex-col">
           <h1 class="contorno-blanco font-nombre font-bold leading-none text-[#8E2BD6]" :style="{ fontSize: tamanoNombre }">{{ p.mascota_nombre }}</h1>
           <p v-if="p.disfraz_nombre" class="contorno-blanco mt-3 font-cartel text-[84px] leading-none text-calabaza-500">&lt;{{ p.disfraz_nombre }}&gt;</p>
-          <p v-if="p.categoria" class="contorno-blanco mt-5 font-cartel text-[44px] italic leading-none text-[#2a1206]">{{ p.categoria.nombre }}</p>
+          <p v-if="p.categoria" data-test="categoria-pasarela" :class="['mt-6 self-start font-cartel text-[44px] leading-none', p.categoria.color ? 'rounded-full px-7 py-3 shadow-xl' : 'contorno-blanco italic text-[#2a1206]']" :style="estiloSolido(p.categoria.color)">{{ p.categoria.nombre }}</p>
         </div>
       </template>
 

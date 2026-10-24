@@ -18,3 +18,10 @@ test('en modo grande todo el texto es ≥ 24 px (text-2xl o mayor)', () => {
   const w = mount(FichaMascota, { props: { participante: p, grande: true } })
   for (const el of w.findAll('[data-texto]')) expect(el.classes().some((c) => /^text-(2xl|3xl|4xl|5xl|6xl)$/.test(c))).toBe(true)
 })
+
+test('la categoría se muestra como chip con su color', () => {
+  const w = mount(FichaMascota, { props: { participante: { ...p, categoria: { ...p.categoria, color: '#FD7218' } } } })
+  const chip = w.get('[data-test="chip-categoria"]')
+  expect(chip.text()).toBe('Caninos pequeños')
+  expect(chip.attributes('style')).toContain('background-color')
+})

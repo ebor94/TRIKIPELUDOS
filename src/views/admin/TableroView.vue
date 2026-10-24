@@ -1,4 +1,6 @@
 <script setup>
+import ChipCategoria from '@/components/ChipCategoria.vue'
+import { normalizarColor } from '@/utils/colorCategoria'
 import { ref, onMounted } from 'vue'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -40,8 +42,8 @@ onMounted(cargar)
     <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
     <template v-if="datos">
       <div class="grid gap-3 sm:grid-cols-2">
-        <article v-for="c in datos.categorias" :key="c.id" class="tarjeta">
-          <h3 class="font-bold">{{ c.nombre }} <span class="text-sm font-normal">({{ c.total }})</span></h3>
+        <article v-for="c in datos.categorias" :key="c.id" class="tarjeta border-t-8" :style="normalizarColor(c.color) ? { borderTopColor: normalizarColor(c.color) } : {}" :data-test="`tarjeta-categoria-${c.id}`">
+          <h3 class="flex flex-wrap items-center gap-2 font-bold"><ChipCategoria :categoria="c" /> <span class="text-sm font-normal">({{ c.total }})</span></h3>
           <p class="text-sm text-morado-600">{{ c.abierta ? 'Abierta' : 'Cerrada' }} · {{ c.ranking_publicado ? 'Publicada' : 'Sin publicar' }}</p>
           <dl class="mt-2 grid grid-cols-3 gap-1 text-sm">
             <template v-for="[clave, texto] in ESTADOS" :key="clave"><dt>{{ texto }}</dt><dd class="col-span-2 font-semibold">{{ c.por_estado[clave] }}</dd></template>

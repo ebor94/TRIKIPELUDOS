@@ -87,3 +87,10 @@ test('modo ganadores: podio 2-1-3 con trofeos, nombre y puntaje, y la categoría
   expect(puestos[1].text()).toContain('Caramelo')
   expect(puestos[1].text()).toContain('98')
 })
+
+test('la categoría de quien está en pasarela se muestra con su color', async () => {
+  trk.get.mockResolvedValue({ data: { ...pasarelaCanela, en_pasarela: { ...pasarelaCanela.en_pasarela, categoria: { nombre: 'Pequeños', color: '#FD7218' } } } })
+  const w = mount(PantallaView)
+  await flushPromises()
+  expect(w.get('[data-test="categoria-pasarela"]').attributes('style')).toContain('background-color')
+})

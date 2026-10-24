@@ -1,4 +1,5 @@
 <script setup>
+import { estiloSolido, estiloTenue } from '@/utils/colorCategoria'
 import { ref, computed, onMounted } from 'vue'
 import { trk } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -103,7 +104,12 @@ onMounted(async () => {
       <button class="btn-claro" data-test="exportar" @click="exportar">⬇️ Exportar Excel</button>
     </div>
     <nav class="flex gap-1 overflow-x-auto">
-      <button v-for="c in categorias.lista" :key="c.id" class="btn whitespace-nowrap" :class="c.id === categoriaId ? 'bg-calabaza-700 text-white' : 'bg-white text-morado-800'" @click="elegir(c.id)">{{ c.nombre }}</button>
+      <button
+        v-for="c in categorias.lista" :key="c.id" class="btn whitespace-nowrap border-2" :data-test="`tab-ranking-${c.id}`"
+        :class="c.color ? '' : (c.id === categoriaId ? 'bg-calabaza-700 text-white' : 'bg-white text-morado-800')"
+        :style="c.id === categoriaId ? estiloSolido(c.color) : estiloTenue(c.color)" :aria-pressed="c.id === categoriaId"
+        @click="elegir(c.id)"
+      ><span v-if="c.id === categoriaId" aria-hidden="true">✓</span>{{ c.nombre }}</button>
     </nav>
     <p v-if="error" class="rounded-xl bg-red-100 p-3 text-red-800" role="alert">{{ error }}</p>
     <p v-if="aviso" class="rounded-xl bg-green-100 p-3 text-green-900" role="status">{{ aviso }}</p>

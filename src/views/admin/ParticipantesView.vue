@@ -1,4 +1,6 @@
 <script setup>
+import ChipCategoria from '@/components/ChipCategoria.vue'
+import { estiloSolido } from '@/utils/colorCategoria'
 import { ref, reactive, nextTick, onMounted } from 'vue'
 import { trk } from '@/services/api'
 import { useCategoriasStore } from '@/stores/categorias'
@@ -123,7 +125,7 @@ onMounted(async () => {
     <h2 class="text-2xl font-bold">Participantes</h2>
     <form class="tarjeta grid gap-2 sm:grid-cols-4" @submit.prevent="cargar">
       <input v-model="filtros.q" class="campo sm:col-span-2" type="search" placeholder="Buscar mascota, responsable o documento" />
-      <select v-model="filtros.categoria" class="campo"><option value="">Todas las categorías</option><option v-for="c in categorias.lista" :key="c.id" :value="c.id">{{ c.nombre }}</option></select>
+      <select v-model="filtros.categoria" class="campo"><option value="">Todas las categorías</option><option v-for="c in categorias.lista" :key="c.id" :value="c.id" :style="estiloSolido(c.color)">{{ c.nombre }}</option></select>
       <select v-model="filtros.estado" class="campo"><option value="">Todos los estados</option><option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option></select>
       <button class="btn-secundario sm:col-span-4" type="submit">Filtrar</button>
     </form>
@@ -137,7 +139,7 @@ onMounted(async () => {
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p class="text-lg font-bold">{{ p.mascota_nombre }} <span class="text-sm font-normal text-morado-600">· {{ p.responsable_nombre }} · {{ p.responsable_documento }}</span></p>
-            <p class="text-sm">{{ nombreCategoria(p.categoria_id) }}<span v-if="p.categoria_propuesta_id" class="text-calabaza-800"> → propuesta: {{ nombreCategoria(p.categoria_propuesta_id) }}</span></p>
+            <p class="flex flex-wrap items-center gap-2 text-sm"><ChipCategoria :categoria="categorias.porId(p.categoria_id) || { nombre: nombreCategoria(p.categoria_id) }" /><template v-if="p.categoria_propuesta_id"><span class="text-calabaza-800">→ propuesta:</span><ChipCategoria :categoria="categorias.porId(p.categoria_propuesta_id) || { nombre: nombreCategoria(p.categoria_propuesta_id) }" /></template></p>
           </div>
           <EstadoChip :estado="p.estado" />
         </div>
